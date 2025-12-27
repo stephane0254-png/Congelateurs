@@ -1,135 +1,150 @@
-import streamlit as st
-import pandas as pd
-import os
-import base64
-import requests
-from datetime import datetime
-
-st.set_page_config(page_title="Mon Congélateur Pro", layout="wide")
-
-# --- CONFIGURATION GITHUB ---
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-REPO_NAME = st.secrets["REPO_NAME"]
-FILE_CSV = "stock_congelateur.csv"
-
-def save_to_github(file_path, commit_message):
-    url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
-    res = requests.get(url, headers=headers)
-    sha = res.json().get("sha") if res.status_code == 200 else None
-    with open(file_path, "rb") as f:
-        content = base64.b64encode(f.read()).decode()
-    data = {"message": commit_message, "content": content}
-    if sha: data["sha"] = sha
-    requests.put(url, headers=headers, json=data)
-
-# --- OPTIONS ---
-LISTE_CAT = ["Plat cuisiné", "Surgelé", "Autre"]
-LISTE_CONT = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
-LISTE_LOC = ["Cuisine", "Buanderie"]
-
-# --- CHARGEMENT & ADAPTATION ---
-# On définit l'ordre des colonnes que NOUS voulons afficher
-COL_AFFICHAGE = ["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"]
-
-if os.path.exists(FILE_CSV):
-    df = pd.read_csv(FILE_CSV).fillna("")
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Segoe UI', Arial; padding: 15px; background-color: #f0f2f5; color: #333; }
+      .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+      input, select, button { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box; }
+      button { background-color: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
+      button.btn-qty { width: 30px; height: 30px; padding: 0; margin: 0 5px; background-color: #6c757d; }
+      button.btn-del { background-color: #dc3545; width: auto; padding: 5px 8px; font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      td { padding: 10px 5px; border-bottom: 1px solid #eee; }
+      .badge { font-size: 10px; padding: 2px 5px; border-radius: 4px; background: #e9ecef; margin-right: 3px; display: inline-block; margin-top: 3px;}
+      .alerte-orange { border-left: 5px solid orange; background-color: #fffaf0; }
+      .alerte-rouge { border-left: 5px solid red; background-color: #fff5f5; }
+      .compteur-urgence { background: #ff4757; color: white; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 15px; font-weight: bold; display: none; }
+      .filter-group { display: flex; gap: 8px; margin-bottom: 5px; }
+      .filter-group select { margin-bottom: 5px; }
+    </style>
+  </head>
+  <body>
+    <h3>❄️ Mon Congélateur</h3>
     
-    # Mapping flexible pour s'adapter à votre fichier Drive
-    # On renomme si jamais des minuscules s'étaient glissées
-    mapping = {
-        'nom': 'Nom',
-        'catégorie': 'Catégorie',
-        'nombre': 'Nombre',
-        'lieu': 'Lieu',
-        'date': 'Date',
-        'contenant': 'Contenant'
-    }
-    df = df.rename(columns=mapping)
-    
-    # Sécurité : Si une colonne manque, on la crée pour éviter le crash
-    for col in COL_AFFICHAGE:
-        if col not in df.columns:
-            df[col] = ""
-else:
-    df = pd.DataFrame(columns=COL_AFFICHAGE)
+    <div class="card">
+      <input type="text" id="produit" placeholder="Nom du produit">
+      <div class="filter-group">
+        <select id="categorie"><option>Plat cuisiné</option><option>Surgelé</option><option>Autre</option></select>
+        <select id="contenant">
+          <option>Couvercle rouge</option>
+          <option>Couvercle vert</option>
+          <option>Grand bleu</option>
+          <option>Petit bleu</option>
+          <option>Plastique blanc</option>
+          <option>Préemballage</option>
+          <option>Pyrex</option>
+          <option>Tupperware</option>
+          <option>Verre Carré</option>
+          <option>Moyen bleu</option>
+          <option>Sachet</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <select id="emplacement"><option>Cuisine</option><option>Buanderie</option></select>
+        <input type="number" id="quantite" value="1" style="width: 80px;">
+      </div>
+      <button onclick="ajouter()">Ajouter au stock</button>
+    </div>
 
-# --- INTERFACE ---
-st.title("❄️ Gestion du Congélateur")
+    <div class="card">
+      <div id="alerteUrgence" class="compteur-urgence"></div>
+      <strong>🔍 Rechercher / Filtrer</strong>
+      <input type="text" id="recherche" placeholder="Nom du produit..." oninput="filtrerStock()">
+      
+      <div class="filter-group">
+        <select id="filtreCat" onchange="filtrerStock()">
+          <option value="">Toutes catégories</option>
+          <option>Plat cuisiné</option>
+          <option>Surgelé</option>
+          <option>Autre</option>
+        </select>
+        <select id="filtreLoc" onchange="filtrerStock()">
+          <option value="">Tous les lieux</option>
+          <option>Cuisine</option>
+          <option>Buanderie</option>
+        </select>
+      </div>
 
-col_add, col_list = st.columns([1, 2])
+      <div id="listeStock">Chargement...</div>
+    </div>
 
-with col_add:
-    st.header("➕ Ajouter")
-    with st.form("ajout_plat", clear_on_submit=True):
-        n = st.text_input("Nom du produit")
-        c = st.selectbox("Catégorie", LISTE_CAT)
-        cont = st.selectbox("Contenant", LISTE_CONT)
-        l = st.selectbox("Lieu", LISTE_LOC)
-        q = st.number_input("Nombre de portions", min_value=1, step=1, value=1)
+    <script>
+      let stockComplet = [];
+
+      window.onload = function() {
+        google.script.run.withSuccessHandler(res => { stockComplet = res; filtrerStock(); }).obtenirStock();
+      };
+
+      function ajouter() {
+        var d = {
+          produit: document.getElementById('produit').value,
+          categorie: document.getElementById('categorie').value,
+          contenant: document.getElementById('contenant').value,
+          quantite: document.getElementById('quantite').value,
+          emplacement: document.getElementById('emplacement').value
+        };
+        if(!d.produit) { alert("Nom vide"); return; }
+        google.script.run.withSuccessHandler(res => { stockComplet = res; filtrerStock(); }).ajouterAliment(d);
+        document.getElementById('produit').value = "";
+      }
+
+      function changerQte(idx, q, m) { google.script.run.withSuccessHandler(res => { stockComplet = res; filtrerStock(); }).modifierQuantite(idx, q + m); }
+      function supprimer(idx) { if(confirm("Supprimer ?")) google.script.run.withSuccessHandler(res => { stockComplet = res; filtrerStock(); }).supprimerLigne(idx); }
+
+      function filtrerStock() {
+        const t = document.getElementById('recherche').value.toLowerCase();
+        const fCat = document.getElementById('filtreCat').value;
+        const fLoc = document.getElementById('filtreLoc').value;
+
+        let resultat = stockComplet.filter(i => {
+          const matchT = i.produit.toLowerCase().includes(t);
+          const matchC = fCat === "" || i.cat === fCat;
+          const matchL = fLoc === "" || i.loc === fLoc;
+          return matchT && matchC && matchL;
+        });
         
-        if st.form_submit_button("Ajouter au stock"):
-            if n:
-                new_row = pd.DataFrame([{
-                    "Nom": n, "Catégorie": c, "Contenant": cont, 
-                    "Lieu": l, "Nombre": int(q), "Date": datetime.now().strftime("%Y-%m-%d")
-                }])
-                df = pd.concat([df, new_row], ignore_index=True)
-                df.to_csv(FILE_CSV, index=False)
-                save_to_github(FILE_CSV, f"Ajout {n}")
-                st.success(f"{n} ajouté !")
-                st.rerun()
+        resultat.sort((a, b) => new Date(a.date) - new Date(b.date));
+        afficher(resultat);
+      }
 
-with col_list:
-    st.header("🔍 Inventaire")
-    
-    f_col1, f_col2 = st.columns(2)
-    recherche = f_col1.text_input("Rechercher un plat...")
-    f_loc = f_col2.selectbox("Filtrer par lieu", ["Tous"] + LISTE_LOC)
-    
-    d_f = df.copy()
-    if recherche:
-        d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-    if f_loc != "Tous":
-        d_f = d_f[d_f['Lieu'] == f_loc]
-    
-    def check_alerte(date_str):
-        if not date_str or date_str == "": return "⚪ Inconnue"
-        try:
-            # Nettoyage de la date pour ne garder que YYYY-MM-DD
-            d_str = str(date_str).split(" ")[0]
-            diff = (datetime.now() - datetime.strptime(d_str, "%Y-%m-%d")).days
-            if diff >= 180: return "🔴 +6 mois"
-            if diff >= 90: return "🟠 +3 mois"
-            return "🟢 Frais"
-        except: return "⚪ Format date"
+      function afficher(stock) {
+        var h = '<table>';
+        const maintenant = new Date();
+        let nbUrgence = 0;
 
-    if not d_f.empty:
-        d_f['État'] = d_f['Date'].apply(check_alerte)
-        
-        # Affichage avec vos noms de colonnes exacts
-        st.dataframe(
-            d_f[["Nom", "Catégorie", "Nombre", "Lieu", "Date", "État", "Contenant"]],
-            column_config={
-                "Nombre": st.column_config.NumberColumn("Nombre", format="%d"),
-                "État": st.column_config.TextColumn("Fraîcheur")
-            },
-            hide_index=True,
-            use_container_width=True,
-            height=600
-        )
-        
-        st.divider()
-        st.subheader("🍴 Sortir un plat")
-        options_plats = [f"{i} | {row['Nom']} ({row['Lieu']})" for i, row in d_f.iterrows()]
-        sel_plat = st.selectbox("Sélectionner le plat consommé", options=options_plats)
-        
-        if st.button("Marquer comme consommé"):
-            idx_to_del = int(sel_plat.split(" | ")[0])
-            nom_plat = df.at[idx_to_del, "Nom"]
-            df = df.drop(idx_to_del).reset_index(drop=True)
-            df.to_csv(FILE_CSV, index=False)
-            save_to_github(FILE_CSV, f"Consommé {nom_plat}")
-            st.rerun()
-    else:
-        st.info("Le congélateur est vide ou aucun résultat ne correspond.")
+        stock.forEach(item => {
+          const dateCongel = new Date(item.date);
+          const mois = (maintenant - dateCongel) / (1000 * 60 * 60 * 24 * 30.44);
+          let classeAlerte = "";
+          
+          if (mois >= 6) { classeAlerte = "alerte-rouge"; nbUrgence++; }
+          else if (mois >= 3) { classeAlerte = "alerte-orange"; }
+
+          h += `<tr class="${classeAlerte}">` +
+            `<td><b>${item.produit}</b><br>` +
+            `<span class="badge">${item.cat}</span>` +
+            `<span class="badge" style="background:#d1ecf1">${item.contenant}</span>` +
+            `<span class="badge" style="background:#fff3cd">${item.loc}</span></td>` +
+            `<td style="white-space:nowrap; text-align:right;">` +
+              `<button class="btn-qty" onclick="changerQte(${item.index},${item.qte},-1)">-</button>` +
+              `<b>${item.qte}</b>` +
+              `<button class="btn-qty" onclick="changerQte(${item.index},${item.qte},1)">+</button>` +
+            `</td>` +
+            `<td><button class="btn-del" onclick="supprimer(${item.index})">🗑️</button></td>` +
+          `</tr>`;
+        });
+
+        const bandeau = document.getElementById('alerteUrgence');
+        if (nbUrgence > 0) {
+          bandeau.style.display = "block";
+          bandeau.innerHTML = `⚠️ ${nbUrgence} produit(s) à consommer (6 mois+)`;
+        } else {
+          bandeau.style.display = "none";
+        }
+
+        document.getElementById('listeStock').innerHTML = stock.length === 0 ? "Aucun produit trouvé." : h + '</table>';
+      }
+    </script>
+  </body>
+</html>
