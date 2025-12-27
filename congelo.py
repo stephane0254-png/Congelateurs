@@ -5,18 +5,32 @@ import base64
 import requests
 from datetime import datetime
 
-# Mode Wide mais avec CSS pour réduire les marges
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS pour compacter l'interface sur mobile
+# CSS pour forcer l'alignement horizontal sur mobile et compacter
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
-    h1 { font-size: 1.5rem !important; }
-    h4 { font-size: 1.1rem !important; }
-    .stButton button { width: 100%; padding: 0.2rem; }
-    hr { margin: 0.5rem 0 !important; }
-    div[data-testid="stExpander"] { margin-bottom: 0.5rem; }
+    .block-container { padding: 1rem !important; }
+    .product-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 0;
+    }
+    .product-info { flex-grow: 1; min-width: 0; }
+    .product-controls { 
+        display: flex; 
+        align-items: center; 
+        gap: 5px; 
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+    div.stButton > button {
+        padding: 2px 8px !important;
+        height: auto !important;
+        min-width: 35px !important;
+    }
+    hr { margin: 0.3rem 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -52,7 +66,6 @@ def update_stock(new_df, msg):
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
 
-# Ajout compact
 with st.expander("➕ Nouveau produit"):
     with st.form("ajout", clear_on_submit=True):
         n = st.text_input("Nom")
@@ -66,9 +79,8 @@ with st.expander("➕ Nouveau produit"):
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# Filtres compacts
 f1, f2 = st.columns(2)
-recherche = f1.text_input("🔍 Rechercher...", label_visibility="collapsed", placeholder="Rechercher...")
+recherche = f1.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed")
 f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], label_visibility="collapsed")
 
 d_f = df.copy()
@@ -79,12 +91,11 @@ if f_loc != "Tous":
 
 st.divider()
 
-# LISTE COMPACTE
+# LISTE OPTIMISÉE MOBILE
 if d_f.empty:
     st.info("Vide.")
 else:
     for i, row in d_f.iterrows():
-        # Calcul couleur
         color = "transparent"
         try:
             diff = (datetime.now() - datetime.strptime(str(row['Date']).split(" ")[0], "%Y-%m-%d")).days
@@ -92,34 +103,31 @@ else:
             elif diff >= 90: color = "#ffa500"
         except: pass
 
-        with st.container():
-            # Disposition smartphone : Nom (gauche) | Commandes (droite)
-            col_info, col_ctrl, col_del = st.columns([5, 4, 1])
-            
-            # 1. Infos (Nom + détails en petit)
-            col_info.markdown(f"""
-                <div style='border-left: 4px solid {color}; padding-left: 8px; line-height: 1.2;'>
-                    <b style='font-size: 0.95rem;'>{row['Nom']}</b><br>
-                    <span style='font-size: 0.75rem; color: gray;'>{row['Catégorie']} | {row['Lieu']}</span>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # 2. Boutons Moins / Nombre / Plus
-            q_moins, q_val, q_plus = col_ctrl.columns([1, 1, 1])
-            if q_moins.button("➖", key=f"m_{i}"):
-                if df.at[i, 'Nombre'] > 1:
-                    df.at[i, 'Nombre'] -= 1
-                    update_stock(df, f"Maj {row['Nom']}")
-            
-            q_val.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 5px;'>{row['Nombre']}</p>", unsafe_allow_html=True)
-            
-            if q_plus.button("➕", key=f"p_{i}"):
-                df.at[i, 'Nombre'] += 1
+        # Structure HTML pour la ligne
+        col_main, col_btn_m, col_val, col_btn_p, col_btn_d = st.columns([5, 1.2, 1, 1.2, 1.2])
+        
+        # 1. Infos à gauche
+        col_main.markdown(f"""
+            <div style='border-left: 4px solid {color}; padding-left: 8px; line-height: 1.1;'>
+                <b style='font-size: 0.9rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{row['Nom']}</b>
+                <span style='font-size: 0.7rem; color: gray;'>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 2. Boutons d'action alignés
+        if col_btn_m.button("➖", key=f"m_{i}"):
+            if df.at[i, 'Nombre'] > 1:
+                df.at[i, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
 
-            # 3. Poubelle
-            if col_del.button("🗑️", key=f"d_{i}"):
-                df = df.drop(i).reset_index(drop=True)
-                update_stock(df, f"Suppr {row['Nom']}")
-            
-            st.divider()
+        col_val.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 5px; font-size: 0.9rem;'>{row['Nombre']}</p>", unsafe_allow_html=True)
+
+        if col_btn_p.button("➕", key=f"p_{i}"):
+            df.at[i, 'Nombre'] += 1
+            update_stock(df, f"Maj {row['Nom']}")
+
+        if col_btn_d.button("🗑️", key=f"d_{i}"):
+            df = df.drop(i).reset_index(drop=True)
+            update_stock(df, f"Suppr {row['Nom']}")
+        
+        st.markdown("<hr>", unsafe_allow_html=True)
