@@ -7,26 +7,33 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS pour forcer l'alignement horizontal sur mobile et compacter
+# CSS AGRESSIF pour forcer l'alignement horizontal sur Mobile
 st.markdown("""
     <style>
     .block-container { padding: 1rem !important; }
-    .product-row {
+    /* Force les colonnes de la liste à rester sur une seule ligne */
+    [data-testid="column"] {
+        flex-direction: row !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    /* Ajustement spécifique pour les lignes de produits */
+    .product-box {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        padding: 5px 0;
+        align-items: center;
+        width: 100%;
     }
     div.stButton > button {
-        padding: 2px 8px !important;
-        height: auto !important;
-        min-width: 35px !important;
+        padding: 2px 5px !important;
+        height: 35px !important;
+        width: 35px !important;
     }
-    hr { margin: 0.3rem 0 !important; }
+    hr { margin: 0.5rem 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONFIGURATION GITHUB ---
+# --- GITHUB CONFIG ---
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = st.secrets["REPO_NAME"]
 FILE_CSV = "stock_congelateur.csv"
@@ -55,6 +62,12 @@ def update_stock(new_df, msg):
     save_to_github(FILE_CSV, msg)
     st.rerun()
 
+# --- FONCTION RESET ---
+def reset_filters():
+    st.session_state["search_key"] = ""
+    st.session_state["cat_key"] = "Toutes"
+    st.session_state["loc_key"] = "Tous"
+
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
 
@@ -72,14 +85,13 @@ with st.expander("➕ Nouveau produit"):
             update_stock(df, f"Ajout {n}")
 
 # RECHERCHE ET FILTRES
-col_search, col_reset = st.columns([4, 1])
-recherche = col_search.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed", key="search_input")
-if col_reset.button("🔄", help="Réinitialiser"):
-    st.rerun()
+col_search, col_reset = st.columns([5, 1])
+recherche = col_search.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed", key="search_key")
+col_reset.button("🔄", on_click=reset_filters)
 
 f1, f2 = st.columns(2)
-f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], label_visibility="collapsed")
-f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], label_visibility="collapsed")
+f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_key", label_visibility="collapsed")
+f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_key", label_visibility="collapsed")
 
 d_f = df.copy()
 if recherche:
@@ -91,7 +103,7 @@ if f_loc != "Tous":
 
 st.divider()
 
-# LISTE OPTIMISÉE MOBILE
+# LISTE FORCEE EN LIGNE
 if d_f.empty:
     st.info("Vide.")
 else:
@@ -103,27 +115,28 @@ else:
             elif diff >= 90: color = "#ffa500"
         except: pass
 
-        col_main, col_btn_m, col_val, col_btn_p, col_btn_d = st.columns([4.5, 1.3, 0.8, 1.3, 1.3])
+        # On utilise une seule ligne avec des colonnes horizontales forcées
+        c_info, c_m, c_v, c_p, c_d = st.columns([4, 1, 1, 1, 1])
         
-        col_main.markdown(f"""
-            <div style='border-left: 4px solid {color}; padding-left: 8px; line-height: 1.1;'>
-                <b style='font-size: 0.85rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{row['Nom']}</b>
-                <span style='font-size: 0.65rem; color: gray;'>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</span>
+        c_info.markdown(f"""
+            <div style='border-left: 4px solid {color}; padding-left: 5px; line-height: 1.1;'>
+                <b style='font-size: 0.8rem;'>{row['Nom']}</b><br>
+                <span style='font-size: 0.6rem; color: gray;'>{row['Catégorie']} | {row['Contenant']}</span>
             </div>
             """, unsafe_allow_html=True)
         
-        if col_btn_m.button("➖", key=f"m_{i}"):
+        if c_m.button("➖", key=f"m_{i}"):
             if df.at[i, 'Nombre'] > 1:
                 df.at[i, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
 
-        col_val.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 5px; font-size: 0.9rem;'>{row['Nombre']}</p>", unsafe_allow_html=True)
+        c_v.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 8px; font-size: 0.9rem;'>{row['Nombre']}</p>", unsafe_allow_html=True)
 
-        if col_btn_p.button("➕", key=f"p_{i}"):
+        if c_p.button("➕", key=f"p_{i}"):
             df.at[i, 'Nombre'] += 1
-            update_stock(df, f"Maj {row['Nombre']}")
+            update_stock(df, f"Maj {row['Nom']}")
 
-        if col_btn_d.button("🗑️", key=f"d_{i}"):
+        if c_d.button("🗑️", key=f"d_{i}"):
             df = df.drop(i).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
         
