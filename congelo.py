@@ -5,7 +5,20 @@ import base64
 import requests
 from datetime import datetime
 
-st.set_page_config(page_title="Mon Congélateur", layout="wide")
+# Mode Wide mais avec CSS pour réduire les marges
+st.set_page_config(page_title="Congélo", layout="wide")
+
+# CSS pour compacter l'interface sur mobile
+st.markdown("""
+    <style>
+    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
+    h1 { font-size: 1.5rem !important; }
+    h4 { font-size: 1.1rem !important; }
+    .stButton button { width: 100%; padding: 0.2rem; }
+    hr { margin: 0.5rem 0 !important; }
+    div[data-testid="stExpander"] { margin-bottom: 0.5rem; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- CONFIGURATION GITHUB ---
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
@@ -23,11 +36,6 @@ def save_to_github(file_path, commit_message):
     if sha: data["sha"] = sha
     requests.put(url, headers=headers, json=data)
 
-# --- OPTIONS ---
-LISTE_CAT = ["Plat cuisiné", "Surgelé", "Autre"]
-LISTE_CONT = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
-LISTE_LOC = ["Cuisine", "Buanderie"]
-
 # --- CHARGEMENT ---
 if os.path.exists(FILE_CSV):
     df = pd.read_csv(FILE_CSV).fillna("")
@@ -36,7 +44,6 @@ if os.path.exists(FILE_CSV):
 else:
     df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 
-# --- FONCTIONS D'ACTION ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
@@ -45,25 +52,24 @@ def update_stock(new_df, msg):
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
 
-# Section AJOUT (Card-style)
-with st.expander("➕ Ajouter un produit", expanded=False):
-    with st.form("ajout"):
-        col1, col2 = st.columns(2)
-        n = col1.text_input("Nom")
-        c = col1.selectbox("Catégorie", LISTE_CAT)
-        cont = col1.selectbox("Contenant", LISTE_CONT)
-        l = col2.selectbox("Lieu", LISTE_LOC)
-        q = col2.number_input("Nombre", min_value=1, step=1)
-        if st.form_submit_button("Ajouter au stock"):
-            new_row = pd.DataFrame([{"Nom": n, "Catégorie": c, "Contenant": cont, "Lieu": l, "Nombre": int(q), "Date": datetime.now().strftime("%Y-%m-%d")}])
+# Ajout compact
+with st.expander("➕ Nouveau produit"):
+    with st.form("ajout", clear_on_submit=True):
+        n = st.text_input("Nom")
+        c1, c2 = st.columns(2)
+        cat = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
+        loc = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
+        cont = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
+        q = st.number_input("Nombre", min_value=1, step=1)
+        if st.form_submit_button("Ajouter"):
+            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat, "Contenant": cont, "Lieu": loc, "Nombre": int(q), "Date": datetime.now().strftime("%Y-%m-%d")}])
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# RECHERCHE ET FILTRES
-st.subheader("🔍 Recherche")
-f_col1, f_col2 = st.columns(2)
-recherche = f_col1.text_input("Filtrer par nom...")
-f_loc = f_col2.selectbox("Filtrer par lieu", ["Tous"] + LISTE_LOC)
+# Filtres compacts
+f1, f2 = st.columns(2)
+recherche = f1.text_input("🔍 Rechercher...", label_visibility="collapsed", placeholder="Rechercher...")
+f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], label_visibility="collapsed")
 
 d_f = df.copy()
 if recherche:
@@ -71,51 +77,49 @@ if recherche:
 if f_loc != "Tous":
     d_f = d_f[d_f['Lieu'] == f_loc]
 
-# AFFICHAGE DE LA LISTE (Style "Ancienne Application")
 st.divider()
 
+# LISTE COMPACTE
 if d_f.empty:
-    st.info("Aucun produit.")
+    st.info("Vide.")
 else:
     for i, row in d_f.iterrows():
-        # Calcul de la couleur d'alerte
-        color = "inherit"
+        # Calcul couleur
+        color = "transparent"
         try:
             diff = (datetime.now() - datetime.strptime(str(row['Date']).split(" ")[0], "%Y-%m-%d")).days
-            if diff >= 180: color = "#ff4b4b" # Rouge
-            elif diff >= 90: color = "#ffa500" # Orange
+            if diff >= 180: color = "#ff4b4b"
+            elif diff >= 90: color = "#ffa500"
         except: pass
 
-        # Création de la ligne avec colonnes
         with st.container():
-            c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
+            # Disposition smartphone : Nom (gauche) | Commandes (droite)
+            col_info, col_ctrl, col_del = st.columns([5, 4, 1])
             
-            # Nom et détails (avec indicateur de couleur)
-            c1.markdown(f"<div style='border-left: 5px solid {color}; padding-left: 10px;'>"
-                        f"<b>{row['Nom']}</b><br>"
-                        f"<small>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</small></div>", unsafe_allow_html=True)
+            # 1. Infos (Nom + détails en petit)
+            col_info.markdown(f"""
+                <div style='border-left: 4px solid {color}; padding-left: 8px; line-height: 1.2;'>
+                    <b style='font-size: 0.95rem;'>{row['Nom']}</b><br>
+                    <span style='font-size: 0.75rem; color: gray;'>{row['Catégorie']} | {row['Lieu']}</span>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # Date
-            c2.write(f"📅 {row['Date']}")
-
-            # Boutons de quantité (+ / -)
-            col_q1, col_q2, col_q3 = c3.columns([1, 1, 1])
-            if col_q1.button("➖", key=f"min_{i}"):
+            # 2. Boutons Moins / Nombre / Plus
+            q_moins, q_val, q_plus = col_ctrl.columns([1, 1, 1])
+            if q_moins.button("➖", key=f"m_{i}"):
                 if df.at[i, 'Nombre'] > 1:
                     df.at[i, 'Nombre'] -= 1
-                    update_stock(df, f"Update {row['Nom']}")
-                else:
-                    st.warning("Utilisez la poubelle pour supprimer.")
-
-            col_q2.markdown(f"<h4 style='text-align: center; margin: 0;'>{row['Nombre']}</h4>", unsafe_allow_html=True)
-
-            if col_q3.button("➕", key=f"plus_{i}"):
+                    update_stock(df, f"Maj {row['Nom']}")
+            
+            q_val.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 5px;'>{row['Nombre']}</p>", unsafe_allow_html=True)
+            
+            if q_plus.button("➕", key=f"p_{i}"):
                 df.at[i, 'Nombre'] += 1
-                update_stock(df, f"Update {row['Nom']}")
+                update_stock(df, f"Maj {row['Nom']}")
 
-            # Bouton Poubelle
-            if c4.button("🗑️", key=f"del_{i}"):
+            # 3. Poubelle
+            if col_del.button("🗑️", key=f"d_{i}"):
                 df = df.drop(i).reset_index(drop=True)
-                update_stock(df, f"Suppression {row['Nom']}")
+                update_stock(df, f"Suppr {row['Nom']}")
             
             st.divider()
