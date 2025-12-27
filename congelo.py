@@ -7,29 +7,16 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS pour resserrer au maximum et forcer l'alignement
+# CSS Spécial Smartphone pour compacter au maximum
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    [data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        align-items: center !important;
-        gap: 0.2rem !important; /* Rapproche les boutons */
-    }
-    [data-testid="column"] {
-        width: auto !important;
-        flex: 1 1 auto !important;
-        padding: 0 !important;
-    }
-    div.stButton > button {
-        padding: 0 !important;
-        width: 30px !important;
-        height: 30px !important;
-        font-size: 12px !important;
-    }
-    hr { margin: 0.3rem 0 !important; }
+    .stButton button { width: 100%; height: 35px; padding: 0; }
+    hr { margin: 0.4rem 0 !important; }
+    .prod-name { font-size: 1rem; font-weight: bold; }
+    .prod-details { font-size: 0.75rem; color: #666; }
+    /* Aligner le nombre verticalement avec les boutons */
+    .qty-text { font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -92,19 +79,19 @@ f1, f2 = st.columns(2)
 f_cat = f1.selectbox("Cat", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
 f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
-# --- CALCUL DES ALERTES ET TRI ---
-def get_priority(date_str):
+# TRI ALERTES
+def get_status(date_str):
     try:
         diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
-        if diff >= 180: return 0, "#ff4b4b" # Rouge (Priorité 0)
-        if diff >= 90: return 1, "#ffa500"  # Orange (Priorité 1)
-        return 2, "transparent"            # Frais (Priorité 2)
+        if diff >= 180: return 0, "#ff4b4b"
+        if diff >= 90: return 1, "#ffa500"
+        return 2, "transparent"
     except: return 2, "transparent"
 
 d_f = df.copy()
 if not d_f.empty:
-    d_f['priority'] = d_f['Date'].apply(lambda x: get_priority(x)[0])
-    d_f['color'] = d_f['Date'].apply(lambda x: get_priority(x)[1])
+    d_f['priority'] = d_f['Date'].apply(lambda x: get_status(x)[0])
+    d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
     d_f = d_f.sort_values(by=['priority', 'Nom']).reset_index()
 
 if recherche:
@@ -116,36 +103,33 @@ if f_loc != "Tous":
 
 st.divider()
 
-# LISTE RESSERRÉE
+# LISTE COMPACTE MOBILE (Disposition 2 lignes pour éviter le scroll horizontal)
 if d_f.empty:
     st.info("Vide.")
 else:
     for _, row in d_f.iterrows():
-        i = row['index'] # Index original pour les actions
+        idx = row['index']
         
-        # Répartition des colonnes très serrée [Texte large, Boutons étroits]
-        cols = st.columns([6, 1.2, 1, 1.2, 1.2])
-        
-        cols[0].markdown(f"""
-            <div style='border-left: 4px solid {row['color']}; padding-left: 5px; line-height: 1.1;'>
-                <b style='font-size: 0.8rem; white-space: nowrap;'>{row['Nom']}</b><br>
-                <span style='font-size: 0.65rem; color: gray;'>{row['Catégorie']}|{row['Contenant']}|{row['Lieu']}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        if cols[1].button("➖", key=f"m_{i}"):
-            if df.at[i, 'Nombre'] > 1:
-                df.at[i, 'Nombre'] -= 1
-                update_stock(df, f"Maj {row['Nom']}")
-
-        cols[2].markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 6px; font-size: 0.85rem;'>{row['Nombre']}</p>", unsafe_allow_html=True)
-
-        if cols[3].button("➕", key=f"p_{i}"):
-            df.at[i, 'Nombre'] += 1
-            update_stock(df, f"Maj {row['Nom']}")
-
-        if cols[4].button("🗑️", key=f"d_{i}"):
-            df = df.drop(i).reset_index(drop=True)
+        # --- LIGNE 1 : NOM ET POUBELLE ---
+        c_name, c_del = st.columns([5, 1])
+        c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
+        if c_del.button("🗑️", key=f"d_{idx}"):
+            df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
+
+        # --- LIGNE 2 : INFOS ET QUANTITÉ ---
+        c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
+        c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>{row['Lieu']} | {row['Contenant']}</span>", unsafe_allow_html=True)
+        
+        if c_m.button("➖", key=f"m_{idx}"):
+            if df.at[idx, 'Nombre'] > 1:
+                df.at[idx, 'Nombre'] -= 1
+                update_stock(df, f"Maj {row['Nom']}")
+        
+        c_v.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
+        
+        if c_p.button("➕", key=f"p_{idx}"):
+            df.at[idx, 'Nombre'] += 1
+            update_stock(df, f"Maj {row['Nom']}")
         
         st.markdown("<hr>", unsafe_allow_html=True)
