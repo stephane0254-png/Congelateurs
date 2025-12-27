@@ -17,14 +17,6 @@ st.markdown("""
         justify-content: space-between;
         padding: 5px 0;
     }
-    .product-info { flex-grow: 1; min-width: 0; }
-    .product-controls { 
-        display: flex; 
-        align-items: center; 
-        gap: 5px; 
-        margin-left: 10px;
-        flex-shrink: 0;
-    }
     div.stButton > button {
         padding: 2px 8px !important;
         height: auto !important;
@@ -70,22 +62,30 @@ with st.expander("➕ Nouveau produit"):
     with st.form("ajout", clear_on_submit=True):
         n = st.text_input("Nom")
         c1, c2 = st.columns(2)
-        cat = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
-        loc = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-        cont = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
-        q = st.number_input("Nombre", min_value=1, step=1)
+        cat_add = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
+        loc_add = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
+        cont_add = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
+        q_add = st.number_input("Nombre", min_value=1, step=1)
         if st.form_submit_button("Ajouter"):
-            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat, "Contenant": cont, "Lieu": loc, "Nombre": int(q), "Date": datetime.now().strftime("%Y-%m-%d")}])
+            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_add, "Contenant": cont_add, "Lieu": loc_add, "Nombre": int(q_add), "Date": datetime.now().strftime("%Y-%m-%d")}])
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
+# RECHERCHE ET FILTRES
+col_search, col_reset = st.columns([4, 1])
+recherche = col_search.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed", key="search_input")
+if col_reset.button("🔄", help="Réinitialiser"):
+    st.rerun()
+
 f1, f2 = st.columns(2)
-recherche = f1.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed")
+f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], label_visibility="collapsed")
 f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], label_visibility="collapsed")
 
 d_f = df.copy()
 if recherche:
     d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
+if f_cat != "Toutes":
+    d_f = d_f[d_f['Catégorie'] == f_cat]
 if f_loc != "Tous":
     d_f = d_f[d_f['Lieu'] == f_loc]
 
@@ -103,18 +103,15 @@ else:
             elif diff >= 90: color = "#ffa500"
         except: pass
 
-        # Structure HTML pour la ligne
-        col_main, col_btn_m, col_val, col_btn_p, col_btn_d = st.columns([5, 1.2, 1, 1.2, 1.2])
+        col_main, col_btn_m, col_val, col_btn_p, col_btn_d = st.columns([4.5, 1.3, 0.8, 1.3, 1.3])
         
-        # 1. Infos à gauche
         col_main.markdown(f"""
             <div style='border-left: 4px solid {color}; padding-left: 8px; line-height: 1.1;'>
-                <b style='font-size: 0.9rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{row['Nom']}</b>
-                <span style='font-size: 0.7rem; color: gray;'>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</span>
+                <b style='font-size: 0.85rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>{row['Nom']}</b>
+                <span style='font-size: 0.65rem; color: gray;'>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</span>
             </div>
             """, unsafe_allow_html=True)
         
-        # 2. Boutons d'action alignés
         if col_btn_m.button("➖", key=f"m_{i}"):
             if df.at[i, 'Nombre'] > 1:
                 df.at[i, 'Nombre'] -= 1
@@ -124,7 +121,7 @@ else:
 
         if col_btn_p.button("➕", key=f"p_{i}"):
             df.at[i, 'Nombre'] += 1
-            update_stock(df, f"Maj {row['Nom']}")
+            update_stock(df, f"Maj {row['Nombre']}")
 
         if col_btn_d.button("🗑️", key=f"d_{i}"):
             df = df.drop(i).reset_index(drop=True)
