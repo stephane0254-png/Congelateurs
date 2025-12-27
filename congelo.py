@@ -7,33 +7,33 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS AGRESSIF pour forcer l'alignement horizontal sur Mobile
+# CSS pour forcer l'affichage en ligne même sur mobile
 st.markdown("""
     <style>
     .block-container { padding: 1rem !important; }
-    /* Force les colonnes de la liste à rester sur une seule ligne */
-    [data-testid="column"] {
+    /* Force les colonnes à ne pas s'empiler */
+    [data-testid="stHorizontalBlock"] {
         flex-direction: row !important;
         display: flex !important;
+        flex-wrap: nowrap !important;
         align-items: center !important;
     }
-    /* Ajustement spécifique pour les lignes de produits */
-    .product-box {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
+    [data-testid="column"] {
+        width: auto !important;
+        flex: 1 1 auto !important;
     }
+    /* Taille fixe pour les boutons */
     div.stButton > button {
-        padding: 2px 5px !important;
-        height: 35px !important;
-        width: 35px !important;
+        padding: 2px !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 14px !important;
     }
-    hr { margin: 0.5rem 0 !important; }
+    hr { margin: 0.4rem 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- GITHUB CONFIG ---
+# --- CONFIG GITHUB ---
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = st.secrets["REPO_NAME"]
 FILE_CSV = "stock_congelateur.csv"
@@ -63,10 +63,10 @@ def update_stock(new_df, msg):
     st.rerun()
 
 # --- FONCTION RESET ---
-def reset_filters():
-    st.session_state["search_key"] = ""
-    st.session_state["cat_key"] = "Toutes"
-    st.session_state["loc_key"] = "Tous"
+def reset_all():
+    st.session_state.search_val = ""
+    st.session_state.cat_val = "Toutes"
+    st.session_state.loc_val = "Tous"
 
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
@@ -75,23 +75,23 @@ with st.expander("➕ Nouveau produit"):
     with st.form("ajout", clear_on_submit=True):
         n = st.text_input("Nom")
         c1, c2 = st.columns(2)
-        cat_add = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
-        loc_add = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-        cont_add = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
-        q_add = st.number_input("Nombre", min_value=1, step=1)
+        cat_a = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
+        loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
+        cont_a = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
+        q_a = st.number_input("Nombre", min_value=1, step=1)
         if st.form_submit_button("Ajouter"):
-            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_add, "Contenant": cont_add, "Lieu": loc_add, "Nombre": int(q_add), "Date": datetime.now().strftime("%Y-%m-%d")}])
+            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# RECHERCHE ET FILTRES
-col_search, col_reset = st.columns([5, 1])
-recherche = col_search.text_input("🔍", placeholder="Rechercher...", label_visibility="collapsed", key="search_key")
-col_reset.button("🔄", on_click=reset_filters)
+# FILTRES
+c_s, c_r = st.columns([5, 1])
+recherche = c_s.text_input("🔍", placeholder="Rechercher...", key="search_val", label_visibility="collapsed")
+c_r.button("🔄", on_click=reset_all)
 
 f1, f2 = st.columns(2)
-f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_key", label_visibility="collapsed")
-f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_key", label_visibility="collapsed")
+f_cat = f1.selectbox("Cat", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
+f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
 d_f = df.copy()
 if recherche:
@@ -103,7 +103,7 @@ if f_loc != "Tous":
 
 st.divider()
 
-# LISTE FORCEE EN LIGNE
+# LISTE
 if d_f.empty:
     st.info("Vide.")
 else:
@@ -115,28 +115,30 @@ else:
             elif diff >= 90: color = "#ffa500"
         except: pass
 
-        # On utilise une seule ligne avec des colonnes horizontales forcées
-        c_info, c_m, c_v, c_p, c_d = st.columns([4, 1, 1, 1, 1])
+        # Utilisation de colonnes très serrées
+        cols = st.columns([4, 1, 0.8, 1, 1])
         
-        c_info.markdown(f"""
+        # Info Produit
+        cols[0].markdown(f"""
             <div style='border-left: 4px solid {color}; padding-left: 5px; line-height: 1.1;'>
-                <b style='font-size: 0.8rem;'>{row['Nom']}</b><br>
-                <span style='font-size: 0.6rem; color: gray;'>{row['Catégorie']} | {row['Contenant']}</span>
+                <b style='font-size: 0.8rem; white-space: nowrap;'>{row['Nom']}</b><br>
+                <span style='font-size: 0.65rem; color: gray;'>{row['Catégorie']} | {row['Contenant']} | {row['Lieu']}</span>
             </div>
             """, unsafe_allow_html=True)
         
-        if c_m.button("➖", key=f"m_{i}"):
+        # Boutons
+        if cols[1].button("➖", key=f"m_{i}"):
             if df.at[i, 'Nombre'] > 1:
                 df.at[i, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
 
-        c_v.markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 8px; font-size: 0.9rem;'>{row['Nombre']}</p>", unsafe_allow_html=True)
+        cols[2].markdown(f"<p style='text-align: center; font-weight: bold; margin-top: 6px;'>{row['Nombre']}</p>", unsafe_allow_html=True)
 
-        if c_p.button("➕", key=f"p_{i}"):
+        if cols[3].button("➕", key=f"p_{i}"):
             df.at[i, 'Nombre'] += 1
             update_stock(df, f"Maj {row['Nom']}")
 
-        if c_d.button("🗑️", key=f"d_{i}"):
+        if cols[4].button("🗑️", key=f"d_{i}"):
             df = df.drop(i).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
         
