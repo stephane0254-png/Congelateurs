@@ -5,17 +5,62 @@ import base64
 import requests
 from datetime import datetime
 
-st.set_page_config(page_title="Congélo", layout="wide")
+st.set_page_config(page_title="Congélo - Design Cartes", layout="wide")
 
-# --- CSS Spécial Smartphone ---
+# --- NOUVEAU CSS STYLE "CARTES" ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .stButton button { width: 100%; height: 35px; padding: 0; }
-    hr { margin: 0.4rem 0 !important; }
-    .prod-name { font-size: 1rem; font-weight: bold; }
-    .prod-details { font-size: 0.75rem; color: #666; }
-    .qty-text { font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 5px; }
+    
+    /* Style de la carte */
+    .product-card {
+        background-color: white;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .badge-loc {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 5px;
+        font-size: 0.7rem;
+        background-color: #f0f2f6;
+        color: #555;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin: 5px 0;
+        color: #1f1f1f;
+    }
+    
+    .card-meta {
+        font-size: 0.75rem;
+        color: #777;
+        margin-bottom: 10px;
+    }
+    
+    /* Alignement des boutons Streamlit pour qu'ils s'intègrent à la carte */
+    div.stButton > button {
+        height: 35px !important;
+        padding: 0 !important;
+    }
+    
+    .qty-display {
+        background: #f8f9fa;
+        border-radius: 5px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+        line-height: 35px;
+        border: 1px solid #eee;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -55,18 +100,11 @@ def reset_all():
     st.session_state.loc_val = "Tous"
     st.session_state.sort_mode = "alpha"
 
-# --- LOGO CATEGORIES ---
-LOGOS_CAT = {
-    "Plat cuisiné": "🍲",
-    "Surgelé": "❄️",
-    "Autre": "📦"
-}
-
-# --- INITIALISATION ETATS ---
+LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 
 # --- INTERFACE ---
-st.title("❄️ Mon Congélateur")
+st.title("❄️ Mon Stock")
 
 with st.expander("➕ Nouveau produit"):
     with st.form("ajout", clear_on_submit=True):
@@ -81,89 +119,74 @@ with st.expander("➕ Nouveau produit"):
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# --- FILTRES ET TRI ---
+# FILTRES
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
-
 if c_sort.button("⌛"):
-    if st.session_state.sort_mode == "alpha":
-        st.session_state.sort_mode = "oldest"
-    elif st.session_state.sort_mode == "oldest":
-        st.session_state.sort_mode = "newest"
-    else:
-        st.session_state.sort_mode = "alpha"
-
+    modes = ["alpha", "oldest", "newest"]
+    st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
 c_r.button("🔄", on_click=reset_all)
 
-f1, f2 = st.columns(2)
-f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
-f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
-
-# --- LOGIQUE DE TRI ET FILTRE ---
+# LOGIQUE DE TRI
 def get_status(date_str):
-    if not date_str: return 2, "transparent"
+    if not date_str: return "transparent"
     try:
-        d_str = str(date_str).split(" ")[0]
-        diff = (datetime.now() - datetime.strptime(d_str, "%Y-%m-%d")).days
-        if diff >= 180: return 0, "#ff4b4b"
-        if diff >= 90: return 1, "#ffa500"
-        return 2, "transparent"
-    except: return 2, "transparent"
+        diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
+        if diff >= 180: return "#ff4b4b"
+        if diff >= 90: return "#ffa500"
+        return "transparent"
+    except: return "transparent"
 
 d_f = df.copy()
 if not d_f.empty:
-    # Correction : Conversion sécurisée des dates (ignore les erreurs)
     d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
-    d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
-    
-    if st.session_state.sort_mode == "alpha":
-        d_f = d_f.sort_values(by='Nom', ascending=True).reset_index()
-        sort_label = "🔤 Nom (A-Z)"
-    elif st.session_state.sort_mode == "oldest":
-        # Les dates NaT (invalides) sont mises à la fin
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=True, na_position='last').reset_index()
-        sort_label = "⏱️ Plus anciens"
-    else:
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
-        sort_label = "⏱️ Plus récents"
+    if st.session_state.sort_mode == "alpha": d_f = d_f.sort_values(by='Nom').reset_index()
+    elif st.session_state.sort_mode == "oldest": d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
+    else: d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
 
-if recherche:
-    d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-if f_cat != "Toutes":
-    d_f = d_f[d_f['Catégorie'] == f_cat]
-if f_loc != "Tous":
-    d_f = d_f[d_f['Lieu'] == f_loc]
+if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
+if st.session_state.cat_val != "Toutes": d_f = d_f[d_f['Catégorie'] == st.session_state.cat_val]
+if st.session_state.loc_val != "Tous": d_f = d_f[d_f['Lieu'] == st.session_state.loc_val]
 
 st.divider()
 
-# --- LISTE COMPACTE MOBILE ---
+# --- AFFICHAGE EN GRILLE DE CARTES ---
 if d_f.empty:
-    st.info("Vide.")
+    st.info("Aucun produit trouvé.")
 else:
-    st.caption(f"Tri : {sort_label}")
-
-    for _, row in d_f.iterrows():
+    # Sur ordinateur : 3 colonnes, sur mobile : Streamlit empile automatiquement
+    cols = st.columns(1) # On peut changer en st.columns(3) pour forcer le PC, mais 1 est plus stable pour le test
+    
+    for i, row in d_f.iterrows():
         idx = row['index']
+        color = get_status(row['Date'])
         logo = LOGOS_CAT.get(row['Catégorie'], "📦")
         
-        c_name, c_eat = st.columns([5, 1])
-        c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
-        if c_eat.button("🍽️", key=f"e_{idx}"):
-            df = df.drop(idx).reset_index(drop=True)
-            update_stock(df, f"Consommé {row['Nom']}")
-
-        c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
-        c_det.markdown(f"<span class='prod-details'>{logo} {row['Catégorie']}<br>📍 {row['Lieu']} | 📦 {row['Contenant']}</span>", unsafe_allow_html=True)
+        # Début de la carte (Conteneur HTML)
+        st.markdown(f"""
+            <div class="product-card" style="border-left: 8px solid {color};">
+                <div class="badge-loc">📍 {row['Lieu']}</div>
+                <div class="card-title">{row['Nom']}</div>
+                <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Boutons d'action sous la carte
+        c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 1.5])
         
         if c_m.button("➖", key=f"m_{idx}"):
             if df.at[idx, 'Nombre'] > 1:
                 df.at[idx, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
         
-        c_v.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
+        c_v.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
         
         if c_p.button("➕", key=f"p_{idx}"):
             df.at[idx, 'Nombre'] += 1
             update_stock(df, f"Maj {row['Nom']}")
+            
+        if c_e.button("🍽️ Fini", key=f"e_{idx}"):
+            df = df.drop(idx).reset_index(drop=True)
+            update_stock(df, f"Consommé {row['Nom']}")
         
-        st.markdown("<hr>", unsafe_allow_html=True)
+        st.write("") # Petit espace entre les cartes
