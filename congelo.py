@@ -53,7 +53,7 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_old = False
+    st.session_state.sort_newest = False
 
 # --- LOGO CATEGORIES ---
 LOGOS_CAT = {
@@ -63,7 +63,7 @@ LOGOS_CAT = {
 }
 
 # --- INITIALISATION ETATS ---
-if 'sort_old' not in st.session_state: st.session_state.sort_old = False
+if 'sort_newest' not in st.session_state: st.session_state.sort_newest = False
 
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
@@ -85,8 +85,9 @@ with st.expander("➕ Nouveau produit"):
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
 
+# Le bouton ⌛ permet maintenant de voir les plus RÉCENTS en haut si on clique dessus
 if c_sort.button("⌛"):
-    st.session_state.sort_old = not st.session_state.sort_old
+    st.session_state.sort_newest = not st.session_state.sort_newest
 
 c_r.button("🔄", on_click=reset_all)
 
@@ -97,7 +98,9 @@ f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", la
 # --- LOGIQUE DE TRI ET FILTRE ---
 def get_status(date_str):
     try:
-        diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
+        # Nettoyage de la date au cas où il y aurait des heures
+        d_str = str(date_str).split(" ")[0]
+        diff = (datetime.now() - datetime.strptime(d_str, "%Y-%m-%d")).days
         if diff >= 180: return 0, "#ff4b4b"
         if diff >= 90: return 1, "#ffa500"
         return 2, "transparent"
@@ -105,14 +108,14 @@ def get_status(date_str):
 
 d_f = df.copy()
 if not d_f.empty:
-    d_f['priority'] = d_f['Date'].apply(lambda x: get_status(x)[0])
+    # On s'assure que la colonne Date est bien au format datetime pour un tri correct
+    d_f['Date_dt'] = pd.to_datetime(d_f['Date'])
     d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
     
-    if st.session_state.sort_old:
-        # Tri par date ASCENDANT (les plus vieux en haut)
-        d_f = d_f.sort_values(by=['Date', 'Nom'], ascending=[True, True]).reset_index()
-    else:
-        d_f = d_f.sort_values(by=['priority', 'Nom']).reset_index()
+    # TRI PAR DÉFAUT : Les plus anciens en haut (Ascending=True)
+    # Si sort_newest est activé, on inverse (Descending)
+    sort_order = not st.session_state.sort_newest
+    d_f = d_f.sort_values(by='Date_dt', ascending=sort_order).reset_index()
 
 if recherche:
     d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
@@ -127,8 +130,10 @@ st.divider()
 if d_f.empty:
     st.info("Vide.")
 else:
-    if st.session_state.sort_old:
-        st.caption("⏱️ Trié par ancienneté (plus vieux en haut)")
+    if not st.session_state.sort_newest:
+        st.caption("⏱️ Tri : Plus anciens en haut")
+    else:
+        st.caption("⏱️ Tri : Plus récents en haut")
 
     for _, row in d_f.iterrows():
         idx = row['index']
