@@ -85,7 +85,6 @@ with st.expander("➕ Nouveau produit"):
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
 
-# Gestion cyclique du bouton sablier
 if c_sort.button("⌛"):
     if st.session_state.sort_mode == "alpha":
         st.session_state.sort_mode = "oldest"
@@ -102,6 +101,7 @@ f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", la
 
 # --- LOGIQUE DE TRI ET FILTRE ---
 def get_status(date_str):
+    if not date_str: return 2, "transparent"
     try:
         d_str = str(date_str).split(" ")[0]
         diff = (datetime.now() - datetime.strptime(d_str, "%Y-%m-%d")).days
@@ -112,19 +112,20 @@ def get_status(date_str):
 
 d_f = df.copy()
 if not d_f.empty:
-    d_f['Date_dt'] = pd.to_datetime(d_f['Date'])
+    # Correction : Conversion sécurisée des dates (ignore les erreurs)
+    d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
     d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
     
-    # Application du mode de tri
     if st.session_state.sort_mode == "alpha":
         d_f = d_f.sort_values(by='Nom', ascending=True).reset_index()
         sort_label = "🔤 Nom (A-Z)"
     elif st.session_state.sort_mode == "oldest":
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=True).reset_index()
-        sort_label = "⏱️ Plus anciens en haut"
+        # Les dates NaT (invalides) sont mises à la fin
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=True, na_position='last').reset_index()
+        sort_label = "⏱️ Plus anciens"
     else:
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False).reset_index()
-        sort_label = "⏱️ Plus récents en haut"
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
+        sort_label = "⏱️ Plus récents"
 
 if recherche:
     d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
@@ -139,7 +140,7 @@ st.divider()
 if d_f.empty:
     st.info("Vide.")
 else:
-    st.caption(f"Tri actuel : {sort_label}")
+    st.caption(f"Tri : {sort_label}")
 
     for _, row in d_f.iterrows():
         idx = row['index']
