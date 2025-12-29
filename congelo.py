@@ -55,6 +55,13 @@ def reset_all():
     st.session_state.loc_val = "Tous"
     st.session_state.sort_old = False
 
+# --- LOGO CATEGORIES ---
+LOGOS_CAT = {
+    "Plat cuisiné": "🍲",
+    "Surgelé": "❄️",
+    "Autre": "📦"
+}
+
 # --- INITIALISATION ETATS ---
 if 'sort_old' not in st.session_state: st.session_state.sort_old = False
 
@@ -65,7 +72,7 @@ with st.expander("➕ Nouveau produit"):
     with st.form("ajout", clear_on_submit=True):
         n = st.text_input("Nom")
         c1, c2 = st.columns(2)
-        cat_a = c1.selectbox("Cat", ["Plat cuisiné", "Surgelé", "Autre"])
+        cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
         loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
         cont_a = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
         q_a = st.number_input("Nombre", min_value=1, step=1)
@@ -78,14 +85,13 @@ with st.expander("➕ Nouveau produit"):
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
 
-# Bouton de tri (⌛) pour basculer l'ordre chronologique
 if c_sort.button("⌛"):
     st.session_state.sort_old = not st.session_state.sort_old
 
 c_r.button("🔄", on_click=reset_all)
 
 f1, f2 = st.columns(2)
-f_cat = f1.selectbox("Cat", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
+f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
 f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
 # --- LOGIQUE DE TRI ET FILTRE ---
@@ -103,10 +109,9 @@ if not d_f.empty:
     d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
     
     if st.session_state.sort_old:
-        # Tri pur par date (les plus anciens d'abord)
-        d_f = d_f.sort_values(by=['Date', 'Nom']).reset_index()
+        # Tri par date ASCENDANT (les plus vieux en haut)
+        d_f = d_f.sort_values(by=['Date', 'Nom'], ascending=[True, True]).reset_index()
     else:
-        # Tri par statut d'alerte (Rouge > Orange > Normal)
         d_f = d_f.sort_values(by=['priority', 'Nom']).reset_index()
 
 if recherche:
@@ -123,10 +128,11 @@ if d_f.empty:
     st.info("Vide.")
 else:
     if st.session_state.sort_old:
-        st.caption("⏱️ Trié par ancienneté")
+        st.caption("⏱️ Trié par ancienneté (plus vieux en haut)")
 
     for _, row in d_f.iterrows():
         idx = row['index']
+        logo = LOGOS_CAT.get(row['Catégorie'], "📦")
         
         # --- LIGNE 1 : NOM ET CONSOMMÉ ---
         c_name, c_eat = st.columns([5, 1])
@@ -135,10 +141,9 @@ else:
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Consommé {row['Nom']}")
 
-        # --- LIGNE 2 : INFOS (Optimisées) ET QUANTITÉ ---
+        # --- LIGNE 2 : INFOS ET QUANTITÉ ---
         c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
-        # Fusion Lieu et Contenant sur une ligne
-        c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>📍 {row['Lieu']} | 📦 {row['Contenant']}</span>", unsafe_allow_html=True)
+        c_det.markdown(f"<span class='prod-details'>{logo} {row['Catégorie']}<br>📍 {row['Lieu']} | 📦 {row['Contenant']}</span>", unsafe_allow_html=True)
         
         if c_m.button("➖", key=f"m_{idx}"):
             if df.at[idx, 'Nombre'] > 1:
