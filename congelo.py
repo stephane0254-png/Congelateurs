@@ -7,34 +7,40 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# --- CSS MOBILE RADICAL ---
+# --- CSS MOBILE REVISITÉ (Boutons style Lien) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
     
-    /* Boutons carrés, texte noir et visible */
-    .stButton button { 
-        width: 100% !important; 
-        height: 38px !important; 
-        padding: 0 !important; 
-        font-size: 1.2rem !important; 
-        font-weight: 900 !important; 
-        color: black !important;
-        border: 1px solid #ccc !important;
-        border-radius: 4px !important;
-        background-color: #f0f2f6 !important;
+    /* On transforme les boutons en simples zones cliquables sans bordure */
+    div.stButton > button {
+        border: none !important;
+        background-color: transparent !important;
+        color: #007BFF !important; /* Couleur bleu lien */
+        font-size: 1.8rem !important; /* Très grand pour cliquer facilement */
+        font-weight: bold !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: 40px !important;
+        box-shadow: none !important;
     }
     
+    /* Style spécial pour le bouton Poubelle (P) */
+    div.stButton > button[key^="d_"] {
+        color: #ff4b4b !important;
+        font-size: 1.2rem !important;
+    }
+
     hr { margin: 0.3rem 0 !important; }
     .prod-name { font-size: 1rem; font-weight: bold; line-height: 1.1; }
-    .prod-details { font-size: 0.7rem; color: #666; line-height: 1; }
+    .prod-details { font-size: 0.75rem; color: #666; line-height: 1; }
     
-    /* Zone de nombre centrée et alignée avec les boutons */
     .qty-text { 
-        font-size: 1.1rem; 
+        font-size: 1.2rem; 
         font-weight: bold; 
         text-align: center; 
-        line-height: 38px; /* Aligne verticalement avec la hauteur du bouton */
+        line-height: 40px;
+        color: #333;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -49,11 +55,12 @@ def save_to_github(file_path, commit_message):
     headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
-    with open(file_path, "rb") as f:
-        content = base64.b64encode(f.read()).decode()
-    data = {"message": commit_message, "content": content}
-    if sha: data["sha"] = sha
-    requests.put(url, headers=headers, json=data)
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            content = base64.b64encode(f.read()).decode()
+        data = {"message": commit_message, "content": content}
+        if sha: data["sha"] = sha
+        requests.put(url, headers=headers, json=data)
 
 # --- CHARGEMENT ---
 if os.path.exists(FILE_CSV):
@@ -132,17 +139,18 @@ else:
         # --- LIGNE 1 : NOM ET BOUTON P ---
         col1, col2 = st.columns([6, 1])
         col1.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
+        # Pour forcer l'affichage, on utilise un caractère Unicode "plus lourd"
         if col2.button("P", key=f"d_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
 
         # --- LIGNE 2 : INFOS ET CONTROLE QUANTITÉ ---
-        # Ratios très serrés pour les boutons à droite
         c_det, c_m, c_v, c_p = st.columns([5, 1, 1, 1])
         
         c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>{row['Lieu']} | {row['Contenant']}</span>", unsafe_allow_html=True)
         
-        if c_m.button("-", key=f"m_{idx}"):
+        # Utilisation de symboles gras mathématiques pour forcer le rendu du texte
+        if c_m.button("−", key=f"m_{idx}"): # Signe moins Unicode robuste
             if df.at[idx, 'Nombre'] > 1:
                 df.at[idx, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
