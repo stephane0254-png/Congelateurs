@@ -7,7 +7,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# --- CSS Spécial Smartphone pour compacter au maximum ---
+# --- CSS Spécial Smartphone ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -15,7 +15,6 @@ st.markdown("""
     hr { margin: 0.4rem 0 !important; }
     .prod-name { font-size: 1rem; font-weight: bold; }
     .prod-details { font-size: 0.75rem; color: #666; }
-    /* Aligner le nombre verticalement avec les boutons */
     .qty-text { font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 5px; }
     </style>
     """, unsafe_allow_html=True)
@@ -54,6 +53,10 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
+    st.session_state.sort_old = False
+
+# --- INITIALISATION ETATS ---
+if 'sort_old' not in st.session_state: st.session_state.sort_old = False
 
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
@@ -71,16 +74,21 @@ with st.expander("➕ Nouveau produit"):
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# --- FILTRES ---
-c_s, c_r = st.columns([5, 1])
-recherche = c_s.text_input("🔍", placeholder="Rechercher...", key="search_val", label_visibility="collapsed")
+# --- FILTRES ET TRI ---
+c_s, c_sort, c_r = st.columns([4, 1, 1])
+recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
+
+# Bouton de tri (⌛) pour basculer l'ordre chronologique
+if c_sort.button("⌛"):
+    st.session_state.sort_old = not st.session_state.sort_old
+
 c_r.button("🔄", on_click=reset_all)
 
 f1, f2 = st.columns(2)
 f_cat = f1.selectbox("Cat", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
 f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
-# --- TRI ALERTES ---
+# --- LOGIQUE DE TRI ET FILTRE ---
 def get_status(date_str):
     try:
         diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
@@ -93,7 +101,13 @@ d_f = df.copy()
 if not d_f.empty:
     d_f['priority'] = d_f['Date'].apply(lambda x: get_status(x)[0])
     d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
-    d_f = d_f.sort_values(by=['priority', 'Nom']).reset_index()
+    
+    if st.session_state.sort_old:
+        # Tri pur par date (les plus anciens d'abord)
+        d_f = d_f.sort_values(by=['Date', 'Nom']).reset_index()
+    else:
+        # Tri par statut d'alerte (Rouge > Orange > Normal)
+        d_f = d_f.sort_values(by=['priority', 'Nom']).reset_index()
 
 if recherche:
     d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
@@ -108,19 +122,23 @@ st.divider()
 if d_f.empty:
     st.info("Vide.")
 else:
+    if st.session_state.sort_old:
+        st.caption("⏱️ Trié par ancienneté")
+
     for _, row in d_f.iterrows():
         idx = row['index']
         
-        # --- LIGNE 1 : NOM ET POUBELLE ---
-        c_name, c_del = st.columns([5, 1])
+        # --- LIGNE 1 : NOM ET CONSOMMÉ ---
+        c_name, c_eat = st.columns([5, 1])
         c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
-        if c_del.button("🗑️", key=f"d_{idx}"):
+        if c_eat.button("🍽️", key=f"e_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
-            update_stock(df, f"Suppr {row['Nom']}")
+            update_stock(df, f"Consommé {row['Nom']}")
 
-        # --- LIGNE 2 : INFOS ET QUANTITÉ ---
+        # --- LIGNE 2 : INFOS (Optimisées) ET QUANTITÉ ---
         c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
-        c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>{row['Lieu']} | {row['Contenant']}</span>", unsafe_allow_html=True)
+        # Fusion Lieu et Contenant sur une ligne
+        c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>📍 {row['Lieu']} | 📦 {row['Contenant']}</span>", unsafe_allow_html=True)
         
         if c_m.button("➖", key=f"m_{idx}"):
             if df.at[idx, 'Nombre'] > 1:
