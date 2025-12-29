@@ -53,7 +53,7 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_newest = False
+    st.session_state.sort_mode = "alpha"
 
 # --- LOGO CATEGORIES ---
 LOGOS_CAT = {
@@ -63,7 +63,7 @@ LOGOS_CAT = {
 }
 
 # --- INITIALISATION ETATS ---
-if 'sort_newest' not in st.session_state: st.session_state.sort_newest = False
+if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 
 # --- INTERFACE ---
 st.title("❄️ Mon Congélateur")
@@ -85,9 +85,14 @@ with st.expander("➕ Nouveau produit"):
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
 
-# Le bouton ⌛ permet maintenant de voir les plus RÉCENTS en haut si on clique dessus
+# Gestion cyclique du bouton sablier
 if c_sort.button("⌛"):
-    st.session_state.sort_newest = not st.session_state.sort_newest
+    if st.session_state.sort_mode == "alpha":
+        st.session_state.sort_mode = "oldest"
+    elif st.session_state.sort_mode == "oldest":
+        st.session_state.sort_mode = "newest"
+    else:
+        st.session_state.sort_mode = "alpha"
 
 c_r.button("🔄", on_click=reset_all)
 
@@ -98,7 +103,6 @@ f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", la
 # --- LOGIQUE DE TRI ET FILTRE ---
 def get_status(date_str):
     try:
-        # Nettoyage de la date au cas où il y aurait des heures
         d_str = str(date_str).split(" ")[0]
         diff = (datetime.now() - datetime.strptime(d_str, "%Y-%m-%d")).days
         if diff >= 180: return 0, "#ff4b4b"
@@ -108,14 +112,19 @@ def get_status(date_str):
 
 d_f = df.copy()
 if not d_f.empty:
-    # On s'assure que la colonne Date est bien au format datetime pour un tri correct
     d_f['Date_dt'] = pd.to_datetime(d_f['Date'])
     d_f['color'] = d_f['Date'].apply(lambda x: get_status(x)[1])
     
-    # TRI PAR DÉFAUT : Les plus anciens en haut (Ascending=True)
-    # Si sort_newest est activé, on inverse (Descending)
-    sort_order = not st.session_state.sort_newest
-    d_f = d_f.sort_values(by='Date_dt', ascending=sort_order).reset_index()
+    # Application du mode de tri
+    if st.session_state.sort_mode == "alpha":
+        d_f = d_f.sort_values(by='Nom', ascending=True).reset_index()
+        sort_label = "🔤 Nom (A-Z)"
+    elif st.session_state.sort_mode == "oldest":
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=True).reset_index()
+        sort_label = "⏱️ Plus anciens en haut"
+    else:
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False).reset_index()
+        sort_label = "⏱️ Plus récents en haut"
 
 if recherche:
     d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
@@ -130,23 +139,18 @@ st.divider()
 if d_f.empty:
     st.info("Vide.")
 else:
-    if not st.session_state.sort_newest:
-        st.caption("⏱️ Tri : Plus anciens en haut")
-    else:
-        st.caption("⏱️ Tri : Plus récents en haut")
+    st.caption(f"Tri actuel : {sort_label}")
 
     for _, row in d_f.iterrows():
         idx = row['index']
         logo = LOGOS_CAT.get(row['Catégorie'], "📦")
         
-        # --- LIGNE 1 : NOM ET CONSOMMÉ ---
         c_name, c_eat = st.columns([5, 1])
         c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
         if c_eat.button("🍽️", key=f"e_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Consommé {row['Nom']}")
 
-        # --- LIGNE 2 : INFOS ET QUANTITÉ ---
         c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
         c_det.markdown(f"<span class='prod-details'>{logo} {row['Catégorie']}<br>📍 {row['Lieu']} | 📦 {row['Contenant']}</span>", unsafe_allow_html=True)
         
