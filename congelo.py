@@ -7,15 +7,14 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS Spécial Smartphone pour compacter au maximum
+# CSS Spécial Smartphone optimisé
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .stButton button { width: 100%; height: 35px; padding: 0; }
+    .stButton button { width: 100%; height: 35px; padding: 0; font-weight: bold; }
     hr { margin: 0.4rem 0 !important; }
     .prod-name { font-size: 1rem; font-weight: bold; }
     .prod-details { font-size: 0.75rem; color: #666; }
-    /* Aligner le nombre verticalement avec les boutons */
     .qty-text { font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 5px; }
     </style>
     """, unsafe_allow_html=True)
@@ -103,32 +102,33 @@ if f_loc != "Tous":
 
 st.divider()
 
-# LISTE COMPACTE MOBILE (Disposition 2 lignes pour éviter le scroll horizontal)
+# LISTE COMPACTE MOBILE
 if d_f.empty:
     st.info("Vide.")
 else:
     for _, row in d_f.iterrows():
         idx = row['index']
         
-        # --- LIGNE 1 : NOM ET POUBELLE ---
-        c_name, c_del = st.columns([5, 1])
+        # --- LIGNE 1 : NOM ET BOUTON P (POUBELLE) ---
+        c_name, c_del = st.columns([5.5, 1])
         c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
-        if c_del.button("🗑️", key=f"d_{idx}"):
+        if c_del.button("P", key=f"d_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
 
-        # --- LIGNE 2 : INFOS ET QUANTITÉ ---
-        c_det, c_m, c_v, c_p = st.columns([3, 1, 1, 1])
+        # --- LIGNE 2 : INFOS ET QUANTITÉ (Colonnes ajustées pour 2 chiffres) ---
+        # Ratio 3.5 pour les détails, 0.8 pour chaque bouton et le texte
+        c_det, c_m, c_v, c_p = st.columns([3.5, 0.8, 0.8, 0.8])
         c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>{row['Lieu']} | {row['Contenant']}</span>", unsafe_allow_html=True)
         
-        if c_m.button("➖", key=f"m_{idx}"):
+        if c_m.button("-", key=f"m_{idx}"):
             if df.at[idx, 'Nombre'] > 1:
                 df.at[idx, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
         
         c_v.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
         
-        if c_p.button("➕", key=f"p_{idx}"):
+        if c_p.button("+", key=f"p_{idx}"):
             df.at[idx, 'Nombre'] += 1
             update_stock(df, f"Maj {row['Nom']}")
         
