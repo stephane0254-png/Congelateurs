@@ -7,15 +7,35 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo", layout="wide")
 
-# CSS Spécial Smartphone optimisé
+# --- CSS MOBILE RADICAL ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .stButton button { width: 100%; height: 35px; padding: 0; font-weight: bold; }
-    hr { margin: 0.4rem 0 !important; }
-    .prod-name { font-size: 1rem; font-weight: bold; }
-    .prod-details { font-size: 0.75rem; color: #666; }
-    .qty-text { font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 5px; }
+    
+    /* Boutons carrés, texte noir et visible */
+    .stButton button { 
+        width: 100% !important; 
+        height: 38px !important; 
+        padding: 0 !important; 
+        font-size: 1.2rem !important; 
+        font-weight: 900 !important; 
+        color: black !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        background-color: #f0f2f6 !important;
+    }
+    
+    hr { margin: 0.3rem 0 !important; }
+    .prod-name { font-size: 1rem; font-weight: bold; line-height: 1.1; }
+    .prod-details { font-size: 0.7rem; color: #666; line-height: 1; }
+    
+    /* Zone de nombre centrée et alignée avec les boutons */
+    .qty-text { 
+        font-size: 1.1rem; 
+        font-weight: bold; 
+        text-align: center; 
+        line-height: 38px; /* Aligne verticalement avec la hauteur du bouton */
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -109,16 +129,17 @@ else:
     for _, row in d_f.iterrows():
         idx = row['index']
         
-        # --- LIGNE 1 : NOM ET BOUTON P (POUBELLE) ---
-        c_name, c_del = st.columns([5.5, 1])
-        c_name.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
-        if c_del.button("P", key=f"d_{idx}"):
+        # --- LIGNE 1 : NOM ET BOUTON P ---
+        col1, col2 = st.columns([6, 1])
+        col1.markdown(f"<div style='border-left: 5px solid {row['color']}; padding-left: 8px;'><span class='prod-name'>{row['Nom']}</span></div>", unsafe_allow_html=True)
+        if col2.button("P", key=f"d_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Suppr {row['Nom']}")
 
-        # --- LIGNE 2 : INFOS ET QUANTITÉ (Colonnes ajustées pour 2 chiffres) ---
-        # Ratio 3.5 pour les détails, 0.8 pour chaque bouton et le texte
-        c_det, c_m, c_v, c_p = st.columns([3.5, 0.8, 0.8, 0.8])
+        # --- LIGNE 2 : INFOS ET CONTROLE QUANTITÉ ---
+        # Ratios très serrés pour les boutons à droite
+        c_det, c_m, c_v, c_p = st.columns([5, 1, 1, 1])
+        
         c_det.markdown(f"<span class='prod-details'>{row['Catégorie']}<br>{row['Lieu']} | {row['Contenant']}</span>", unsafe_allow_html=True)
         
         if c_m.button("-", key=f"m_{idx}"):
