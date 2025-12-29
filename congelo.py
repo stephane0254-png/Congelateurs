@@ -5,61 +5,57 @@ import base64
 import requests
 from datetime import datetime
 
-st.set_page_config(page_title="Congélo - Design Cartes", layout="wide")
+st.set_page_config(page_title="Congélo - Cartes", layout="wide")
 
-# --- NOUVEAU CSS STYLE "CARTES" ---
+# --- CSS STYLE "CARTES" OPTIMISÉ ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
     
-    /* Style de la carte */
+    /* Carte principale */
     .product-card {
         background-color: white;
         border-radius: 10px;
-        padding: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        padding: 12px;
+        margin-bottom: 5px;
+        border: 1px solid #ddd;
+        border-left: 8px solid transparent;
     }
     
     .badge-loc {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 5px;
         font-size: 0.7rem;
-        background-color: #f0f2f6;
-        color: #555;
+        background-color: #e1f5fe;
+        color: #0288d1;
+        padding: 2px 6px;
+        border-radius: 4px;
         font-weight: bold;
-        margin-bottom: 5px;
     }
     
     .card-title {
         font-size: 1.1rem;
         font-weight: bold;
-        margin: 5px 0;
-        color: #1f1f1f;
+        margin-top: 5px;
     }
     
     .card-meta {
         font-size: 0.75rem;
-        color: #777;
+        color: #666;
         margin-bottom: 10px;
     }
-    
-    /* Alignement des boutons Streamlit pour qu'ils s'intègrent à la carte */
+
+    /* Ajustement boutons */
     div.stButton > button {
         height: 35px !important;
-        padding: 0 !important;
+        font-weight: bold !important;
     }
     
     .qty-display {
-        background: #f8f9fa;
-        border-radius: 5px;
         text-align: center;
         font-weight: bold;
         font-size: 1.2rem;
         line-height: 35px;
-        border: 1px solid #eee;
+        background: #f0f2f6;
+        border-radius: 4px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -71,7 +67,7 @@ FILE_CSV = "stock_congelateur.csv"
 
 def save_to_github(file_path, commit_message):
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": f"application/vnd.github.v3+json"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
     if os.path.exists(file_path):
@@ -119,13 +115,17 @@ with st.expander("➕ Nouveau produit"):
             df = pd.concat([df, new_row], ignore_index=True)
             update_stock(df, f"Ajout {n}")
 
-# FILTRES
+# FILTRES ET TRI
 c_s, c_sort, c_r = st.columns([4, 1, 1])
 recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
 if c_sort.button("⌛"):
     modes = ["alpha", "oldest", "newest"]
     st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
 c_r.button("🔄", on_click=reset_all)
+
+f1, f2 = st.columns(2)
+f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
+f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
 # LOGIQUE DE TRI
 def get_status(date_str):
@@ -134,59 +134,58 @@ def get_status(date_str):
         diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
         if diff >= 180: return "#ff4b4b"
         if diff >= 90: return "#ffa500"
-        return "transparent"
-    except: return "transparent"
+        return "#ddd" # Gris par défaut pour la bordure
+    except: return "#ddd"
 
 d_f = df.copy()
 if not d_f.empty:
     d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
-    if st.session_state.sort_mode == "alpha": d_f = d_f.sort_values(by='Nom').reset_index()
-    elif st.session_state.sort_mode == "oldest": d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
-    else: d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
+    if st.session_state.sort_mode == "alpha": 
+        d_f = d_f.sort_values(by='Nom').reset_index()
+        s_lbl = "🔤 Nom"
+    elif st.session_state.sort_mode == "oldest": 
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
+        s_lbl = "⌛ Plus anciens"
+    else: 
+        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
+        s_lbl = "⌛ Plus récents"
 
 if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-if st.session_state.cat_val != "Toutes": d_f = d_f[d_f['Catégorie'] == st.session_state.cat_val]
-if st.session_state.loc_val != "Tous": d_f = d_f[d_f['Lieu'] == st.session_state.loc_val]
+if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
+if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
 
 st.divider()
 
-# --- AFFICHAGE EN GRILLE DE CARTES ---
+# --- AFFICHAGE ---
 if d_f.empty:
-    st.info("Aucun produit trouvé.")
+    st.info("Aucun produit.")
 else:
-    # Sur ordinateur : 3 colonnes, sur mobile : Streamlit empile automatiquement
-    cols = st.columns(1) # On peut changer en st.columns(3) pour forcer le PC, mais 1 est plus stable pour le test
-    
-    for i, row in d_f.iterrows():
+    st.caption(f"Tri : {s_lbl}")
+    for _, row in d_f.iterrows():
         idx = row['index']
         color = get_status(row['Date'])
         logo = LOGOS_CAT.get(row['Catégorie'], "📦")
         
-        # Début de la carte (Conteneur HTML)
+        # Carte HTML
         st.markdown(f"""
-            <div class="product-card" style="border-left: 8px solid {color};">
-                <div class="badge-loc">📍 {row['Lieu']}</div>
+            <div class="product-card" style="border-left-color: {color};">
+                <span class="badge-loc">📍 {row['Lieu']}</span>
                 <div class="card-title">{row['Nom']}</div>
                 <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
             </div>
             """, unsafe_allow_html=True)
         
-        # Boutons d'action sous la carte
-        c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 1.5])
-        
+        # Boutons d'action
+        c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 2])
         if c_m.button("➖", key=f"m_{idx}"):
             if df.at[idx, 'Nombre'] > 1:
                 df.at[idx, 'Nombre'] -= 1
                 update_stock(df, f"Maj {row['Nom']}")
-        
         c_v.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
-        
         if c_p.button("➕", key=f"p_{idx}"):
             df.at[idx, 'Nombre'] += 1
             update_stock(df, f"Maj {row['Nom']}")
-            
         if c_e.button("🍽️ Fini", key=f"e_{idx}"):
             df = df.drop(idx).reset_index(drop=True)
             update_stock(df, f"Consommé {row['Nom']}")
-        
-        st.write("") # Petit espace entre les cartes
+        st.write("") # Espace
