@@ -78,7 +78,6 @@ st.title("❄️ Stock congélateurs")
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
 
-# Ajout de l'onglet Récapitulatif au milieu
 tab1, tab_recap, tab2 = st.tabs(["📦 Stock", "📋 Récapitulatif", "⚙️ Configuration"])
 
 with tab1:
@@ -95,6 +94,7 @@ with tab1:
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
+                # ENREGISTREMENT DATE + HEURE PRÉCISE
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": ts}])
                 df = pd.concat([df, new_row], ignore_index=True)
@@ -169,42 +169,43 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- NOUVEL ONGLET RÉCAPITULATIF CORRIGÉ ---
+# --- ONGLET RÉCAPITULATIF CORRIGÉ ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
     
     recap_df = df.copy()
     if not recap_df.empty:
-        # 1. Filtrer par lieu
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
         
-        # 2. Conversion forcée en format Date pour un tri fiable
-        # errors='coerce' transformera les dates illisibles en NaT (Not a Time)
+        # Conversion robuste avec horodatage
         recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
         
-        # 3. Tri chronologique (du plus ancien au plus récent)
-        # na_position='last' place les produits sans date à la fin
+        # Tri du plus ancien au plus récent
         recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
             st.info(f"Le congélateur {lieu_recap} est vide.")
         else:
-            st.write(f"**Produits dans {lieu_recap} (triés par date de congélation) :**")
+            st.write(f"**Produits dans {lieu_recap} (triés par ancienneté) :**")
             for _, row in recap_df.iterrows():
-                # Affichage propre de la date si elle existe
+                # Indicateur de couleur selon l'ancienneté
+                icon = "⚪"
                 if pd.notna(row['Date_dt']):
+                    diff = (datetime.now() - row['Date_dt']).days
+                    if diff >= 180: icon = "🔴"
+                    elif diff >= 90: icon = "🟠"
                     date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
                 else:
                     date_display = "(Date inconnue)"
                 
-                # Liste textuelle simple
-                st.text(f"• {row['Nom']} - Qté: {row['Nombre']} {date_display}")
+                st.text(f"{icon} {row['Nom']} - Qté: {row['Nombre']} {date_display}")
     else:
         st.info("Aucun produit en stock.")
 
 with tab2:
     st.subheader("🛠️ Configuration")
+    # ... (Reste du code identique)
     with st.form("conf_cont", clear_on_submit=True):
         new_c = st.text_input("Ajouter un contenant")
         if st.form_submit_button("Valider"):
