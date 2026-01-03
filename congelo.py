@@ -5,10 +5,10 @@ import base64
 import requests
 from datetime import datetime
 
-# Titre de l'onglet navigateur
+# Configuration de la page
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
-# --- CSS STYLE ---
+# --- STYLE CSS (PROPRE) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -18,7 +18,7 @@ st.markdown("""
         padding: 12px;
         margin-bottom: 5px;
         border: 1px solid #ddd;
-        border-left: 8px solid transparent;
+        border-left: 8px solid #ddd;
     }
     .badge-loc {
         font-size: 0.7rem;
@@ -28,18 +28,18 @@ st.markdown("""
         border-radius: 4px;
         font-weight: bold;
     }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
-    .card-meta { font-size: 0.75rem; color: #666; margin-bottom: 10px; }
-    div.stButton > button { height: 35px !important; font-weight: bold !important; }
-    .qty-display {
-        text-align: center; font-weight: bold; font-size: 1.2rem;
-        line-height: 35px; background: #f0f2f6; border-radius: 4px;
-    }
     .new-label {
         float: right;
         font-size: 0.7rem;
         color: #2e7d32;
         font-weight: bold;
+    }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-top: 5px; margin-bottom: 2px; color: black; }
+    .card-meta { font-size: 0.75rem; color: #666; }
+    div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
+    .qty-display {
+        text-align: center; font-weight: bold; font-size: 1.2rem;
+        line-height: 35px; background: #f0f2f6; border-radius: 4px; height: 35px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -62,27 +62,25 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT ---
+# --- CHARGEMENT DES DONNÉES ---
 if os.path.exists(FILE_CSV):
     try:
         df = pd.read_csv(FILE_CSV).fillna("")
-        mapping = {'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'}
-        df = df.rename(columns=mapping)
+        df = df.rename(columns={'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'})
     except:
         df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 else:
     df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 
-initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
 if os.path.exists(FILE_CONTENANTS):
     try:
         df_cont = pd.read_csv(FILE_CONTENANTS)
     except:
-        df_cont = pd.DataFrame({"Nom": initial_cont})
+        df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 else:
-    df_cont = pd.DataFrame({"Nom": initial_cont})
+    df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
-# --- FONCTIONS ---
+# --- ACTIONS ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
@@ -93,13 +91,6 @@ def update_contenants(new_df, msg):
     save_to_github(FILE_CONTENANTS, msg)
     st.rerun()
 
-def reset_all():
-    st.session_state.search_val = ""
-    st.session_state.cat_val = "Toutes"
-    st.session_state.loc_val = "Tous"
-    st.session_state.sort_mode = "alpha"
-    st.session_state.last_added_id = None
-
 # --- INTERFACE ---
 st.title("❄️ Stock congélateurs")
 
@@ -109,7 +100,7 @@ if 'last_added_id' not in st.session_state: st.session_state.last_added_id = Non
 tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
 with tab1:
-    LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
+    LOGOS = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
@@ -117,114 +108,111 @@ with tab1:
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-            list_options = sorted(df_cont["Nom"].tolist())
-            cont_a = st.selectbox("Contenant", list_options)
+            cont_list = sorted(df_cont["Nom"].tolist())
+            cont_a = st.selectbox("Contenant", cont_list)
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": ts}])
                 df = pd.concat([df, new_row], ignore_index=True)
-                st.session_state.last_added_id = n + ts
+                st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
-    # FILTRES ET TRI
-    c_s, c_sort, c_r = st.columns([4, 1, 1])
-    recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
+    # FILTRES
+    c_s, c_sort, c_reset = st.columns([4, 1, 1])
+    search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
     if c_sort.button("⌛"):
         modes = ["alpha", "newest", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
-    c_r.button("🔄", on_click=reset_all)
+    if c_reset.button("🔄"):
+        st.session_state.search_val = ""
+        st.session_state.sort_mode = "alpha"
+        st.session_state.last_added_id = None
+        st.rerun()
 
-    f1, f2 = st.columns(2)
-    f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
-    f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
-
-    # LOGIQUE DE TRI
-    d_f = df.copy()
-    if not d_f.empty:
-        d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
-        if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-        if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
-        if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
+    # TRI ET FILTRAGE
+    working_df = df.copy()
+    if not working_df.empty:
+        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
+        if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         
-        if st.session_state.sort_mode == "alpha": 
-            d_f = d_f.sort_values(by='Nom').reset_index()
-            s_lbl = "🔤 Nom"
-        elif st.session_state.sort_mode == "oldest": 
-            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
-            s_lbl = "⌛ Plus anciens"
-        else: 
-            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True], na_position='last').reset_index()
-            s_lbl = "⌛ Plus récents"
+        # Tri principal
+        if st.session_state.sort_mode == "alpha":
+            working_df = working_df.sort_values(by='Nom').reset_index()
+        elif st.session_state.sort_mode == "oldest":
+            working_df = working_df.sort_values(by=['Date_dt', 'Nom']).reset_index()
+        else:
+            working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True]).reset_index()
 
+        # Epinglage du dernier ajouté
         if st.session_state.last_added_id:
-            mask = (d_f['Nom'] + d_f['Date'].astype(str)) == st.session_state.last_added_id
+            working_df['temp_id'] = working_df['Nom'] + "_" + working_df['Date'].astype(str)
+            mask = working_df['temp_id'] == st.session_state.last_added_id
             if mask.any():
-                d_f = pd.concat([d_f[mask], d_f[~mask]])
+                top = working_df[mask]
+                bottom = working_df[~mask]
+                working_df = pd.concat([top, bottom]).drop(columns=['temp_id'])
 
-    st.divider()
-
-    # AFFICHAGE
-    if d_f.empty:
-        st.info("Aucun produit.")
+    # AFFICHAGE DES CARTES
+    if working_df.empty:
+        st.info("Aucun produit trouvé.")
     else:
-        st.caption(f"Tri : {s_lbl}")
-        for _, row in d_f.iterrows():
+        for _, row in working_df.iterrows():
             idx = row['index']
-            color = "#ddd"
-            if row['Date']:
-                try:
-                    diff = (datetime.now() - pd.to_datetime(row['Date'])).days
-                    if diff >= 180: color = "#ff4b4b"
-                    elif diff >= 90: color = "#ffa500"
-                except: pass
+            # Couleur selon date
+            b_color = "#ddd"
+            try:
+                diff = (datetime.now() - pd.to_datetime(row['Date'])).days
+                if diff >= 180: b_color = "#ff4b4b"
+                elif diff >= 90: b_color = "#ffa500"
+            except: pass
             
-            logo = LOGOS_CAT.get(row['Catégorie'], "📦")
-            is_last = (row['Nom'] + str(row['Date'])) == st.session_state.last_added_id
+            # Détection nouveau
+            is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
+            new_tag = '<div class="new-label">✨ NOUVEAU</div>' if is_new else ''
+            card_border = "border: 2px solid #2e7d32;" if is_new else ""
             
-            # Bloc HTML propre et unique
-            new_tag = '<span class="new-label">✨ NOUVEAU</span>' if is_last else ''
-            border = "border: 2px solid #2e7d32;" if is_last else ""
-            
-            card_html = f"""
-            <div class="product-card" style="border-left-color: {color}; {border}">
+            # GÉNÉRATION HTML UNIQUE (Anti-bug)
+            html_content = f"""
+            <div class="product-card" style="border-left: 8px solid {b_color}; {card_border}">
                 <span class="badge-loc">📍 {row['Lieu']}</span>
                 {new_tag}
                 <div class="card-title">{row['Nom']}</div>
-                <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
+                <div class="card-meta">{LOGOS.get(row['Catégorie'], "📦")} {row['Catégorie']} | 📦 {row['Contenant']}</div>
             </div>
             """
-            st.markdown(card_html, unsafe_allow_html=True)
+            st.markdown(html_content, unsafe_allow_html=True)
             
-            c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 2])
-            if c_m.button("➖", key=f"m_{idx}"):
+            # Boutons de contrôle
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+            if col1.button("➖", key=f"min_{idx}"):
                 if df.at[idx, 'Nombre'] > 1:
                     df.at[idx, 'Nombre'] -= 1
-                    update_stock(df, f"Maj {row['Nom']}")
-            c_v.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
-            if c_p.button("➕", key=f"p_{idx}"):
+                    update_stock(df, "Moins")
+            col2.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
+            if col3.button("➕", key=f"plus_{idx}"):
                 df.at[idx, 'Nombre'] += 1
-                update_stock(df, f"Maj {row['Nom']}")
-            if c_e.button("🍽️ Fini", key=f"e_{idx}"):
+                update_stock(df, "Plus")
+            if col4.button("🍽️ Fini", key=f"fin_{idx}"):
                 df = df.drop(idx).reset_index(drop=True)
-                if is_last: st.session_state.last_added_id = None
-                update_stock(df, f"Consommé {row['Nom']}")
+                st.session_state.last_added_id = None
+                update_stock(df, "Consommé")
             st.write("")
 
 with tab2:
-    st.subheader("🛠️ Gestion des Contenants")
-    with st.form("add_contenant", clear_on_submit=True):
-        nc = st.text_input("Nom du nouveau contenant")
-        if st.form_submit_button("Ajouter le contenant"):
-            if nc and nc not in df_cont["Nom"].values:
-                df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": nc}])], ignore_index=True)
-                update_contenants(df_cont, f"Ajout contenant {nc}")
+    st.subheader("🛠️ Configuration des Contenants")
+    with st.form("conf_cont", clear_on_submit=True):
+        new_c = st.text_input("Ajouter un type de contenant")
+        if st.form_submit_button("Valider"):
+            if new_c and new_c not in df_cont["Nom"].values:
+                df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": new_c}])], ignore_index=True)
+                update_contenants(df_cont, f"Nouveau contenant: {new_c}")
     
     st.write("---")
     for i, r in df_cont.sort_values("Nom").iterrows():
-        cn, cd = st.columns([3, 1])
-        cn.write(f"- {r['Nom']}")
-        if cd.button("🗑️", key=f"del_c_{i}"):
+        c_n, c_d = st.columns([4, 1])
+        c_n.write(f"• {r['Nom']}")
+        if c_d.button("🗑️", key=f"del_{i}"):
             df_cont = df_cont.drop(i).reset_index(drop=True)
-            update_contenants(df_cont, f"Suppr {r['Nom']}")
+            update_contenants(df_cont, "Suppression contenant")
