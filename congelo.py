@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd  # <-- La correction est ici
+import pandas as pd
 import os
 import base64
 import requests
@@ -7,7 +7,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo - Cartes", layout="wide")
 
-# --- CSS STYLE ---
+# --- CSS STYLE (Inchangé) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -55,20 +55,31 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT DES DONNÉES ---
-# Stock
+# --- CHARGEMENT SÉCURISÉ ---
+
+# 1. Stock
 if os.path.exists(FILE_CSV):
-    df = pd.read_csv(FILE_CSV).fillna("")
-    mapping = {'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'}
-    df = df.rename(columns=mapping)
+    try:
+        df = pd.read_csv(FILE_CSV).fillna("")
+        mapping = {'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'}
+        df = df.rename(columns=mapping)
+    except:
+        df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 else:
     df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 
-# Contenants
+# 2. Contenants (Correction de l'erreur vide)
+initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
+
 if os.path.exists(FILE_CONTENANTS):
-    df_cont = pd.read_csv(FILE_CONTENANTS)
+    try:
+        df_cont = pd.read_csv(FILE_CONTENANTS)
+        if df_cont.empty or "Nom" not in df_cont.columns:
+            raise ValueError("Fichier mal formé")
+    except:
+        df_cont = pd.DataFrame({"Nom": initial_cont})
+        df_cont.to_csv(FILE_CONTENANTS, index=False)
 else:
-    initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
     df_cont = pd.DataFrame({"Nom": initial_cont})
     df_cont.to_csv(FILE_CONTENANTS, index=False)
 
@@ -104,8 +115,11 @@ with tab1:
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-            cont_list = df_cont["Nom"].tolist() if not df_cont.empty else ["Standard"]
-            cont_a = st.selectbox("Contenant", cont_list)
+            
+            # Sécurité pour la liste déroulante
+            list_options = df_cont["Nom"].tolist() if not df_cont.empty else ["Standard"]
+            cont_a = st.selectbox("Contenant", list_options)
+            
             q_a = st.number_input("Nombre", min_value=1, step=1)
             if st.form_submit_button("Ajouter"):
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
