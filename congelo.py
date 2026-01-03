@@ -170,7 +170,7 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- ONGLET RÉCAPITULATIF HARMONISÉ ---
+# --- ONGLET RÉCAPITULATIF CORRIGÉ (Lecture des dates robuste) ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
@@ -179,10 +179,16 @@ with tab_recap:
     if not recap_df.empty:
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
         
-        # Conversion robuste : pandas gère automatiquement l'ajout de 00:00:00 si l'heure manque
-        recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
+        # Tentative de conversion robuste
+        # On essaie d'abord avec le format jour en premier (JJ/MM/AAAA)
+        recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], dayfirst=True, errors='coerce')
         
-        # Tri chronologique pur
+        # Pour les lignes qui n'ont toujours pas de date (NaT), on tente une conversion automatique plus large
+        mask_inconnu = recap_df['Date_dt'].isna() & (recap_df['Date'] != "")
+        if mask_inconnu.any():
+            recap_df.loc[mask_inconnu, 'Date_dt'] = pd.to_datetime(recap_df.loc[mask_inconnu, 'Date'], errors='coerce')
+
+        # Tri chronologique (00:00:00 par défaut si l'heure manque)
         recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
@@ -197,7 +203,9 @@ with tab_recap:
                     elif diff >= 90: icon = "🟠"
                     date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
                 else:
-                    date_display = "(Date inconnue)"
+                    # Si c'est vraiment inconnu, on affiche quand même la valeur brute du CSV pour comprendre l'erreur
+                    valeur_brute = row['Date'] if row['Date'] else "Vide"
+                    date_display = f"(Format inconnu : {valeur_brute})"
                 
                 st.text(f"{icon} {row['Nom']} - Qté: {row['Nombre']} {date_display}")
     else:
