@@ -66,7 +66,6 @@ def update_stock(new_df, msg):
     st.rerun()
 
 def reset_filters():
-    """Fonction de rappel pour réinitialiser les filtres sans erreur"""
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
@@ -79,7 +78,8 @@ st.title("❄️ Stock congélateurs")
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
 
-tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
+# Ajout de l'onglet Récapitulatif au milieu
+tab1, tab_recap, tab2 = st.tabs(["📦 Stock", "📋 Récapitulatif", "⚙️ Configuration"])
 
 with tab1:
     LOGOS = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
@@ -101,18 +101,12 @@ with tab1:
                 st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
-    # FILTRES ET TRI
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
-    # On s'assure que les clés existent dans le session_state avant le premier affichage
     if "search_val" not in st.session_state: st.session_state.search_val = ""
-    
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
-    
     if c_sort.button("⌛"):
         modes = ["alpha", "newest", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
-    
-    # Utilisation du callback on_click pour éviter l'erreur API
     c_reset.button("🔄", on_click=reset_filters)
 
     f1, f2 = st.columns(2)
@@ -122,7 +116,6 @@ with tab1:
     working_df = df.copy()
     if not working_df.empty:
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
-        
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
@@ -140,14 +133,12 @@ with tab1:
             if mask.any():
                 working_df = pd.concat([working_df[mask], working_df[~mask]]).drop(columns=['temp_id'])
 
-    # AFFICHAGE
     if working_df.empty:
         st.info("Aucun produit trouvé.")
     else:
         for _, row in working_df.iterrows():
             idx = row['index']
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
-            
             status_color = "#ddd"
             if row['Date']:
                 try:
@@ -159,14 +150,11 @@ with tab1:
 
             with st.container(border=True):
                 st.markdown(f'<div style="height: 5px; background-color: {status_color}; border-radius: 5px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
-                
                 c_top1, c_top2 = st.columns([1, 1])
                 c_top1.caption(f"📍 {row['Lieu']}")
                 if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
-                
                 st.subheader(row['Nom'])
                 st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
-                
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
                 if col1.button("➖", key=f"min_{idx}"):
                     if df.at[idx, 'Nombre'] > 1:
@@ -180,6 +168,36 @@ with tab1:
                     df = df.drop(idx).reset_index(drop=True)
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
+
+# --- NOUVEL ONGLET RÉCAPITULATIF ---
+with tab_recap:
+    st.subheader("📋 Liste par congélateur")
+    lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
+    
+    recap_df = df.copy()
+    if not recap_df.empty:
+        # Filtrer par lieu choisi
+        recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
+        # Convertir et trier du plus ancien au plus récent
+        recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
+        recap_df = recap_df.sort_values(by=['Date_dt', 'Nom'], na_position='last')
+        
+        if recap_df.empty:
+            st.info(f"Le congélateur {lieu_recap} est vide.")
+        else:
+            st.write(f"**Produits dans {lieu_recap} (du plus ancien au plus récent) :**")
+            for _, row in recap_df.iterrows():
+                # Formatage de la date pour l'affichage si elle existe
+                date_str = ""
+                if row['Date']:
+                    try:
+                        d_obj = pd.to_datetime(row['Date'])
+                        date_str = f"({d_obj.strftime('%d/%m/%Y')})"
+                    except: pass
+                
+                st.text(f"• {row['Nom']} - Qté: {row['Nombre']} {date_str}")
+    else:
+        st.info("Aucun produit en stock.")
 
 with tab2:
     st.subheader("🛠️ Configuration")
