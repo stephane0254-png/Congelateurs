@@ -17,7 +17,6 @@ st.markdown("""
         text-align: center; font-weight: bold; font-size: 1.2rem;
         background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px;
     }
-    /* Style pour simuler le bandeau de couleur à gauche du container */
     [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) {
         border-left-width: 10px !important;
     }
@@ -93,7 +92,7 @@ with tab1:
                 st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
-    # FILTRES
+    # FILTRES ET TRI
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
     if c_sort.button("⌛"):
@@ -101,15 +100,27 @@ with tab1:
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
     if c_reset.button("🔄"):
         st.session_state.search_val = ""
+        st.session_state.cat_val = "Toutes"
+        st.session_state.loc_val = "Tous"
         st.session_state.sort_mode = "alpha"
         st.session_state.last_added_id = None
         st.rerun()
 
+    # Filtres de Catégorie et Lieu
+    f1, f2 = st.columns(2)
+    f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val")
+    f_loc = f2.selectbox("Filtrer par lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val")
+
     working_df = df.copy()
     if not working_df.empty:
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
-        if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         
+        # Application des filtres
+        if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
+        if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
+        if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
+        
+        # Tri principal
         if st.session_state.sort_mode == "alpha":
             working_df = working_df.sort_values(by='Nom').reset_index()
         elif st.session_state.sort_mode == "oldest":
@@ -117,6 +128,7 @@ with tab1:
         else:
             working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True]).reset_index()
 
+        # Épinglage
         if st.session_state.last_added_id:
             working_df['temp_id'] = working_df['Nom'] + "_" + working_df['Date'].astype(str)
             mask = working_df['temp_id'] == st.session_state.last_added_id
@@ -125,7 +137,7 @@ with tab1:
 
     # AFFICHAGE
     if working_df.empty:
-        st.info("Aucun produit.")
+        st.info("Aucun produit trouvé.")
     else:
         for _, row in working_df.iterrows():
             idx = row['index']
@@ -141,21 +153,16 @@ with tab1:
                 except: pass
             if is_new: status_color = "#2e7d32"
 
-            # --- LE CADRE ENGLOBANT (Container Natif) ---
             with st.container(border=True):
-                # On insère une petite ligne colorée tout en haut pour le code couleur
                 st.markdown(f'<div style="height: 5px; background-color: {status_color}; border-radius: 5px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
                 
-                # Infos du haut
                 c_top1, c_top2 = st.columns([1, 1])
                 c_top1.caption(f"📍 {row['Lieu']}")
                 if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
                 
-                # Nom et détails
                 st.subheader(row['Nom'])
                 st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
                 
-                # Boutons (Désormais garantis d'être dans le cadre)
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
                 if col1.button("➖", key=f"min_{idx}"):
                     if df.at[idx, 'Nombre'] > 1:
