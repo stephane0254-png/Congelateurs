@@ -1,5 +1,5 @@
 import streamlit as st
-import pd
+import pandas as pd  # <-- La correction est ici
 import os
 import base64
 import requests
@@ -7,7 +7,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo - Cartes", layout="wide")
 
-# --- CSS STYLE (Inchangé) ---
+# --- CSS STYLE ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -68,7 +68,6 @@ else:
 if os.path.exists(FILE_CONTENANTS):
     df_cont = pd.read_csv(FILE_CONTENANTS)
 else:
-    # Liste initiale par défaut si le fichier n'existe pas
     initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
     df_cont = pd.DataFrame({"Nom": initial_cont})
     df_cont.to_csv(FILE_CONTENANTS, index=False)
@@ -105,8 +104,8 @@ with tab1:
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-            # Utilisation de la base de données pour les contenants
-            cont_a = st.selectbox("Contenant", df_cont["Nom"].tolist())
+            cont_list = df_cont["Nom"].tolist() if not df_cont.empty else ["Standard"]
+            cont_a = st.selectbox("Contenant", cont_list)
             q_a = st.number_input("Nombre", min_value=1, step=1)
             if st.form_submit_button("Ajouter"):
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
@@ -125,7 +124,6 @@ with tab1:
     f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
     f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
-    # LOGIQUE DE TRI (Identique)
     def get_status(date_str):
         if not date_str: return "transparent"
         try:
@@ -154,7 +152,6 @@ with tab1:
 
     st.divider()
 
-    # AFFICHAGE DES CARTES
     if d_f.empty:
         st.info("Aucun produit.")
     else:
@@ -189,7 +186,6 @@ with tab1:
 with tab2:
     st.subheader("🛠️ Gestion des Contenants")
     
-    # Formulaire pour ajouter un contenant
     with st.form("add_contenant", clear_on_submit=True):
         nouveau_cont = st.text_input("Nom du nouveau contenant")
         if st.form_submit_button("Ajouter le contenant"):
@@ -201,8 +197,6 @@ with tab2:
                 st.warning("Nom vide ou déjà existant.")
 
     st.write("---")
-    
-    # Liste des contenants avec option de suppression
     st.write("**Liste actuelle :**")
     for i, c_row in df_cont.iterrows():
         col_name, col_del = st.columns([3, 1])
