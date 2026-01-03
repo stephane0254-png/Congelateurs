@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import base64
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Titre de l'onglet navigateur
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
@@ -34,6 +34,12 @@ st.markdown("""
     .qty-display {
         text-align: center; font-weight: bold; font-size: 1.2rem;
         line-height: 35px; background: #f0f2f6; border-radius: 4px;
+    }
+    .new-badge {
+        float: right;
+        font-size: 0.7rem;
+        color: #2e7d32;
+        font-weight: bold;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -118,14 +124,13 @@ with tab1:
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
-                # On génère un ID unique temporaire pour l'affichage immédiat
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{
                     "Nom": n, "Catégorie": cat_a, "Contenant": cont_a, 
                     "Lieu": loc_a, "Nombre": int(q_a), "Date": timestamp
                 }])
                 df = pd.concat([df, new_row], ignore_index=True)
-                st.session_state.last_added_id = n + timestamp # Identifiant unique pour ce produit
+                st.session_state.last_added_id = n + timestamp
                 update_stock(df, f"Ajout {n}")
 
     # FILTRES ET TRI
@@ -145,7 +150,6 @@ with tab1:
     if not d_f.empty:
         d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
         
-        # Application des filtres AVANT le tri final
         if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
         if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
         if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
@@ -161,10 +165,8 @@ with tab1:
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True], na_position='last').reset_index()
             s_lbl = "⌛ Plus récents"
 
-        # --- LOGIQUE SPÉCIALE AJOUT ---
-        # Si on vient d'ajouter un produit, on le place en haut peu importe le tri
+        # Logique épinglage
         if st.session_state.last_added_id:
-            # On cherche si le produit est dans le dataframe filtré
             mask = (d_f['Nom'] + d_f['Date'].astype(str)) == st.session_state.last_added_id
             if mask.any():
                 added_row = d_f[mask]
@@ -180,7 +182,6 @@ with tab1:
         st.caption(f"Tri : {s_lbl}")
         for _, row in d_f.iterrows():
             idx = row['index']
-            # Calcul couleur
             color = "#ddd"
             if row['Date']:
                 try:
@@ -190,15 +191,16 @@ with tab1:
                 except: pass
             
             logo = LOGOS_CAT.get(row['Catégorie'], "📦")
-            
-            # Encadré spécial si c'est le dernier ajouté
             is_last = (row['Nom'] + str(row['Date'])) == st.session_state.last_added_id
+            
+            # Correction de l'affichage HTML
+            new_label = '<span class="new-badge">✨ NOUVEAU</span>' if is_last else ''
             border_style = "border: 2px solid #2e7d32;" if is_last else ""
             
             st.markdown(f"""
                 <div class="product-card" style="border-left-color: {color}; {border_style}">
                     <span class="badge-loc">📍 {row['Lieu']}</span>
-                    { '<span style="float:right; font-size:0.7rem; color:#2e7d32;">✨ NOUVEAU</span>' if is_last else '' }
+                    {new_label}
                     <div class="card-title">{row['Nom']}</div>
                     <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
                 </div>
