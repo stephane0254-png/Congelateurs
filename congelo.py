@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd
 import os
 import base64
 import requests
@@ -7,12 +7,10 @@ from datetime import datetime
 
 st.set_page_config(page_title="Congélo - Cartes", layout="wide")
 
-# --- CSS STYLE "CARTES" OPTIMISÉ ---
+# --- CSS STYLE (Inchangé) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    
-    /* Carte principale */
     .product-card {
         background-color: white;
         border-radius: 10px;
@@ -21,7 +19,6 @@ st.markdown("""
         border: 1px solid #ddd;
         border-left: 8px solid transparent;
     }
-    
     .badge-loc {
         font-size: 0.7rem;
         background-color: #e1f5fe;
@@ -30,32 +27,12 @@ st.markdown("""
         border-radius: 4px;
         font-weight: bold;
     }
-    
-    .card-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        margin-top: 5px;
-    }
-    
-    .card-meta {
-        font-size: 0.75rem;
-        color: #666;
-        margin-bottom: 10px;
-    }
-
-    /* Ajustement boutons */
-    div.stButton > button {
-        height: 35px !important;
-        font-weight: bold !important;
-    }
-    
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
+    .card-meta { font-size: 0.75rem; color: #666; margin-bottom: 10px; }
+    div.stButton > button { height: 35px !important; font-weight: bold !important; }
     .qty-display {
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.2rem;
-        line-height: 35px;
-        background: #f0f2f6;
-        border-radius: 4px;
+        text-align: center; font-weight: bold; font-size: 1.2rem;
+        line-height: 35px; background: #f0f2f6; border-radius: 4px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -64,6 +41,7 @@ st.markdown("""
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = st.secrets["REPO_NAME"]
 FILE_CSV = "stock_congelateur.csv"
+FILE_CONTENANTS = "contenants.csv"
 
 def save_to_github(file_path, commit_message):
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
@@ -77,7 +55,8 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT ---
+# --- CHARGEMENT DES DONNÉES ---
+# Stock
 if os.path.exists(FILE_CSV):
     df = pd.read_csv(FILE_CSV).fillna("")
     mapping = {'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'}
@@ -85,9 +64,24 @@ if os.path.exists(FILE_CSV):
 else:
     df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 
+# Contenants
+if os.path.exists(FILE_CONTENANTS):
+    df_cont = pd.read_csv(FILE_CONTENANTS)
+else:
+    # Liste initiale par défaut si le fichier n'existe pas
+    initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
+    df_cont = pd.DataFrame({"Nom": initial_cont})
+    df_cont.to_csv(FILE_CONTENANTS, index=False)
+
+# --- FONCTIONS DE MISE À JOUR ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
+    st.rerun()
+
+def update_contenants(new_df, msg):
+    new_df.to_csv(FILE_CONTENANTS, index=False)
+    save_to_github(FILE_CONTENANTS, msg)
     st.rerun()
 
 def reset_all():
@@ -96,96 +90,123 @@ def reset_all():
     st.session_state.loc_val = "Tous"
     st.session_state.sort_mode = "alpha"
 
-LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
-if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
-
 # --- INTERFACE ---
-st.title("❄️ Mon Stock")
+st.title("❄️ Mon Congélo")
 
-with st.expander("➕ Nouveau produit"):
-    with st.form("ajout", clear_on_submit=True):
-        n = st.text_input("Nom")
-        c1, c2 = st.columns(2)
-        cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
-        loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-        cont_a = st.selectbox("Contenant", ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"])
-        q_a = st.number_input("Nombre", min_value=1, step=1)
-        if st.form_submit_button("Ajouter"):
-            new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
-            df = pd.concat([df, new_row], ignore_index=True)
-            update_stock(df, f"Ajout {n}")
+tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
-# FILTRES ET TRI
-c_s, c_sort, c_r = st.columns([4, 1, 1])
-recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
-if c_sort.button("⌛"):
-    modes = ["alpha", "oldest", "newest"]
-    st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
-c_r.button("🔄", on_click=reset_all)
+with tab1:
+    LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
+    if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 
-f1, f2 = st.columns(2)
-f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
-f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
+    with st.expander("➕ Nouveau produit"):
+        with st.form("ajout", clear_on_submit=True):
+            n = st.text_input("Nom")
+            c1, c2 = st.columns(2)
+            cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
+            loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
+            # Utilisation de la base de données pour les contenants
+            cont_a = st.selectbox("Contenant", df_cont["Nom"].tolist())
+            q_a = st.number_input("Nombre", min_value=1, step=1)
+            if st.form_submit_button("Ajouter"):
+                new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
+                df = pd.concat([df, new_row], ignore_index=True)
+                update_stock(df, f"Ajout {n}")
 
-# LOGIQUE DE TRI
-def get_status(date_str):
-    if not date_str: return "transparent"
-    try:
-        diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
-        if diff >= 180: return "#ff4b4b"
-        if diff >= 90: return "#ffa500"
-        return "#ddd" # Gris par défaut pour la bordure
-    except: return "#ddd"
+    # FILTRES ET TRI
+    c_s, c_sort, c_r = st.columns([4, 1, 1])
+    recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
+    if c_sort.button("⌛"):
+        modes = ["alpha", "oldest", "newest"]
+        st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
+    c_r.button("🔄", on_click=reset_all)
 
-d_f = df.copy()
-if not d_f.empty:
-    d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
-    if st.session_state.sort_mode == "alpha": 
-        d_f = d_f.sort_values(by='Nom').reset_index()
-        s_lbl = "🔤 Nom"
-    elif st.session_state.sort_mode == "oldest": 
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
-        s_lbl = "⌛ Plus anciens"
-    else: 
-        d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
-        s_lbl = "⌛ Plus récents"
+    f1, f2 = st.columns(2)
+    f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
+    f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
-if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
-if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
+    # LOGIQUE DE TRI (Identique)
+    def get_status(date_str):
+        if not date_str: return "transparent"
+        try:
+            diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
+            if diff >= 180: return "#ff4b4b"
+            if diff >= 90: return "#ffa500"
+            return "#ddd"
+        except: return "#ddd"
 
-st.divider()
+    d_f = df.copy()
+    if not d_f.empty:
+        d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
+        if st.session_state.sort_mode == "alpha": 
+            d_f = d_f.sort_values(by='Nom').reset_index()
+            s_lbl = "🔤 Nom"
+        elif st.session_state.sort_mode == "oldest": 
+            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
+            s_lbl = "⌛ Plus anciens"
+        else: 
+            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
+            s_lbl = "⌛ Plus récents"
 
-# --- AFFICHAGE ---
-if d_f.empty:
-    st.info("Aucun produit.")
-else:
-    st.caption(f"Tri : {s_lbl}")
-    for _, row in d_f.iterrows():
-        idx = row['index']
-        color = get_status(row['Date'])
-        logo = LOGOS_CAT.get(row['Catégorie'], "📦")
-        
-        # Carte HTML
-        st.markdown(f"""
-            <div class="product-card" style="border-left-color: {color};">
-                <span class="badge-loc">📍 {row['Lieu']}</span>
-                <div class="card-title">{row['Nom']}</div>
-                <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Boutons d'action
-        c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 2])
-        if c_m.button("➖", key=f"m_{idx}"):
-            if df.at[idx, 'Nombre'] > 1:
-                df.at[idx, 'Nombre'] -= 1
+    if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
+    if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
+    if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
+
+    st.divider()
+
+    # AFFICHAGE DES CARTES
+    if d_f.empty:
+        st.info("Aucun produit.")
+    else:
+        st.caption(f"Tri : {s_lbl}")
+        for _, row in d_f.iterrows():
+            idx = row['index']
+            color = get_status(row['Date'])
+            logo = LOGOS_CAT.get(row['Catégorie'], "📦")
+            
+            st.markdown(f"""
+                <div class="product-card" style="border-left-color: {color};">
+                    <span class="badge-loc">📍 {row['Lieu']}</span>
+                    <div class="card-title">{row['Nom']}</div>
+                    <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 2])
+            if c_m.button("➖", key=f"m_{idx}"):
+                if df.at[idx, 'Nombre'] > 1:
+                    df.at[idx, 'Nombre'] -= 1
+                    update_stock(df, f"Maj {row['Nom']}")
+            c_v.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
+            if c_p.button("➕", key=f"p_{idx}"):
+                df.at[idx, 'Nombre'] += 1
                 update_stock(df, f"Maj {row['Nom']}")
-        c_v.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
-        if c_p.button("➕", key=f"p_{idx}"):
-            df.at[idx, 'Nombre'] += 1
-            update_stock(df, f"Maj {row['Nom']}")
-        if c_e.button("🍽️ Fini", key=f"e_{idx}"):
-            df = df.drop(idx).reset_index(drop=True)
-            update_stock(df, f"Consommé {row['Nom']}")
-        st.write("") # Espace
+            if c_e.button("🍽️ Fini", key=f"e_{idx}"):
+                df = df.drop(idx).reset_index(drop=True)
+                update_stock(df, f"Consommé {row['Nom']}")
+            st.write("")
+
+with tab2:
+    st.subheader("🛠️ Gestion des Contenants")
+    
+    # Formulaire pour ajouter un contenant
+    with st.form("add_contenant", clear_on_submit=True):
+        nouveau_cont = st.text_input("Nom du nouveau contenant")
+        if st.form_submit_button("Ajouter le contenant"):
+            if nouveau_cont and nouveau_cont not in df_cont["Nom"].values:
+                new_c_row = pd.DataFrame([{"Nom": nouveau_cont}])
+                df_cont = pd.concat([df_cont, new_c_row], ignore_index=True)
+                update_contenants(df_cont, f"Ajout contenant {nouveau_cont}")
+            else:
+                st.warning("Nom vide ou déjà existant.")
+
+    st.write("---")
+    
+    # Liste des contenants avec option de suppression
+    st.write("**Liste actuelle :**")
+    for i, c_row in df_cont.iterrows():
+        col_name, col_del = st.columns([3, 1])
+        col_name.write(f"- {c_row['Nom']}")
+        if col_del.button("🗑️", key=f"del_cont_{i}"):
+            df_cont = df_cont.drop(i).reset_index(drop=True)
+            update_contenants(df_cont, f"Suppression contenant {c_row['Nom']}")
