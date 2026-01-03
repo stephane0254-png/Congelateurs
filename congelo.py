@@ -94,7 +94,6 @@ with tab1:
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
-                # ENREGISTREMENT DATE + HEURE PRÉCISE
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": ts}])
                 df = pd.concat([df, new_row], ignore_index=True)
@@ -115,7 +114,9 @@ with tab1:
 
     working_df = df.copy()
     if not working_df.empty:
+        # Harmonisation : On s'assure que toutes les dates sont des objets datetime valides
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
+        
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
@@ -140,9 +141,9 @@ with tab1:
             idx = row['index']
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
             status_color = "#ddd"
-            if row['Date']:
+            if pd.notna(row['Date_dt']):
                 try:
-                    diff = (datetime.now() - pd.to_datetime(row['Date'])).days
+                    diff = (datetime.now() - row['Date_dt']).days
                     if diff >= 180: status_color = "#ff4b4b"
                     elif diff >= 90: status_color = "#ffa500"
                 except: pass
@@ -169,7 +170,7 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- ONGLET RÉCAPITULATIF CORRIGÉ ---
+# --- ONGLET RÉCAPITULATIF HARMONISÉ ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
@@ -178,10 +179,10 @@ with tab_recap:
     if not recap_df.empty:
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
         
-        # Conversion robuste avec horodatage
+        # Conversion robuste : pandas gère automatiquement l'ajout de 00:00:00 si l'heure manque
         recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
         
-        # Tri du plus ancien au plus récent
+        # Tri chronologique pur
         recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
@@ -189,7 +190,6 @@ with tab_recap:
         else:
             st.write(f"**Produits dans {lieu_recap} (triés par ancienneté) :**")
             for _, row in recap_df.iterrows():
-                # Indicateur de couleur selon l'ancienneté
                 icon = "⚪"
                 if pd.notna(row['Date_dt']):
                     diff = (datetime.now() - row['Date_dt']).days
@@ -205,7 +205,6 @@ with tab_recap:
 
 with tab2:
     st.subheader("🛠️ Configuration")
-    # ... (Reste du code identique)
     with st.form("conf_cont", clear_on_submit=True):
         new_c = st.text_input("Ajouter un contenant")
         if st.form_submit_button("Valider"):
