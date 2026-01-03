@@ -35,7 +35,7 @@ st.markdown("""
         text-align: center; font-weight: bold; font-size: 1.2rem;
         line-height: 35px; background: #f0f2f6; border-radius: 4px;
     }
-    .new-badge {
+    .new-label {
         float: right;
         font-size: 0.7rem;
         color: #2e7d32;
@@ -103,10 +103,8 @@ def reset_all():
 # --- INTERFACE ---
 st.title("❄️ Stock congélateurs")
 
-if 'sort_mode' not in st.session_state:
-    st.session_state.sort_mode = "alpha"
-if 'last_added_id' not in st.session_state:
-    st.session_state.last_added_id = None
+if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
+if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
 
 tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
@@ -124,13 +122,10 @@ with tab1:
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_row = pd.DataFrame([{
-                    "Nom": n, "Catégorie": cat_a, "Contenant": cont_a, 
-                    "Lieu": loc_a, "Nombre": int(q_a), "Date": timestamp
-                }])
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": ts}])
                 df = pd.concat([df, new_row], ignore_index=True)
-                st.session_state.last_added_id = n + timestamp
+                st.session_state.last_added_id = n + ts
                 update_stock(df, f"Ajout {n}")
 
     # FILTRES ET TRI
@@ -149,12 +144,10 @@ with tab1:
     d_f = df.copy()
     if not d_f.empty:
         d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
-        
         if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
         if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
         if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
         
-        # Tri de base
         if st.session_state.sort_mode == "alpha": 
             d_f = d_f.sort_values(by='Nom').reset_index()
             s_lbl = "🔤 Nom"
@@ -165,13 +158,10 @@ with tab1:
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True], na_position='last').reset_index()
             s_lbl = "⌛ Plus récents"
 
-        # Logique épinglage
         if st.session_state.last_added_id:
             mask = (d_f['Nom'] + d_f['Date'].astype(str)) == st.session_state.last_added_id
             if mask.any():
-                added_row = d_f[mask]
-                other_rows = d_f[~mask]
-                d_f = pd.concat([added_row, other_rows])
+                d_f = pd.concat([d_f[mask], d_f[~mask]])
 
     st.divider()
 
@@ -193,18 +183,19 @@ with tab1:
             logo = LOGOS_CAT.get(row['Catégorie'], "📦")
             is_last = (row['Nom'] + str(row['Date'])) == st.session_state.last_added_id
             
-            # Correction de l'affichage HTML
-            new_label = '<span class="new-badge">✨ NOUVEAU</span>' if is_last else ''
-            border_style = "border: 2px solid #2e7d32;" if is_last else ""
+            # Bloc HTML propre et unique
+            new_tag = '<span class="new-label">✨ NOUVEAU</span>' if is_last else ''
+            border = "border: 2px solid #2e7d32;" if is_last else ""
             
-            st.markdown(f"""
-                <div class="product-card" style="border-left-color: {color}; {border_style}">
-                    <span class="badge-loc">📍 {row['Lieu']}</span>
-                    {new_label}
-                    <div class="card-title">{row['Nom']}</div>
-                    <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
-                </div>
-                """, unsafe_allow_html=True)
+            card_html = f"""
+            <div class="product-card" style="border-left-color: {color}; {border}">
+                <span class="badge-loc">📍 {row['Lieu']}</span>
+                {new_tag}
+                <div class="card-title">{row['Nom']}</div>
+                <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
+            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
             
             c_m, c_v, c_p, c_e = st.columns([1, 1, 1, 2])
             if c_m.button("➖", key=f"m_{idx}"):
@@ -224,19 +215,16 @@ with tab1:
 with tab2:
     st.subheader("🛠️ Gestion des Contenants")
     with st.form("add_contenant", clear_on_submit=True):
-        nouveau_cont = st.text_input("Nom du nouveau contenant")
+        nc = st.text_input("Nom du nouveau contenant")
         if st.form_submit_button("Ajouter le contenant"):
-            if nouveau_cont and nouveau_cont not in df_cont["Nom"].values:
-                new_c_row = pd.DataFrame([{"Nom": nouveau_cont}])
-                df_cont = pd.concat([df_cont, new_c_row], ignore_index=True)
-                update_contenants(df_cont, f"Ajout contenant {nouveau_cont}")
-            else: st.warning("Nom vide ou déjà existant.")
-
+            if nc and nc not in df_cont["Nom"].values:
+                df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": nc}])], ignore_index=True)
+                update_contenants(df_cont, f"Ajout contenant {nc}")
+    
     st.write("---")
-    st.write("**Liste actuelle :**")
-    for i, c_row in df_cont.sort_values("Nom").iterrows():
-        col_name, col_del = st.columns([3, 1])
-        col_name.write(f"- {c_row['Nom']}")
-        if col_del.button("🗑️", key=f"del_cont_{i}"):
+    for i, r in df_cont.sort_values("Nom").iterrows():
+        cn, cd = st.columns([3, 1])
+        cn.write(f"- {r['Nom']}")
+        if cd.button("🗑️", key=f"del_c_{i}"):
             df_cont = df_cont.drop(i).reset_index(drop=True)
-            update_contenants(df_cont, f"Suppression contenant {c_row['Nom']}")
+            update_contenants(df_cont, f"Suppr {r['Nom']}")
