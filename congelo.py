@@ -20,6 +20,10 @@ st.markdown("""
     [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) {
         border-left-width: 10px !important;
     }
+    .stats-box {
+        padding: 10px; border-radius: 8px; background-color: #f0f2f6;
+        margin-bottom: 20px; border: 1px solid #ddd; text-align: center;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -47,9 +51,7 @@ def load_data():
     if os.path.exists(FILE_CSV):
         try:
             temp_df = pd.read_csv(FILE_CSV).fillna("")
-            # Harmonisation des noms de colonnes (minuscules/majuscules)
             temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
-            # S'assurer que toutes les colonnes requises existent
             for c in cols:
                 if c not in temp_df.columns: temp_df[c] = ""
             return temp_df[cols]
@@ -123,7 +125,6 @@ with tab1:
     working_df = df.copy()
     if not working_df.empty:
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce', dayfirst=True)
-        
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
@@ -134,8 +135,6 @@ with tab1:
             working_df = working_df.sort_values(by=['Date_dt', 'Nom'])
         else:
             working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True])
-
-        # Récupération des index après tri
         working_df = working_df.reset_index()
 
     if working_df.empty:
@@ -172,7 +171,7 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- RÉCAPITULATIF SÉCURISÉ ---
+# --- RÉCAPITULATIF AVEC STATS ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True, key="radio_recap")
@@ -181,6 +180,19 @@ with tab_recap:
     if not recap_df.empty:
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
         recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
+        
+        # Calcul des statistiques d'ancienneté pour le lieu choisi
+        if not recap_df.empty:
+            now = datetime.now()
+            nb_rouge = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 180)])
+            nb_orange = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 90) & ((now - recap_df['Date_dt']).dt.days < 180)])
+            
+            if nb_rouge > 0 or nb_orange > 0:
+                msg = []
+                if nb_rouge > 0: msg.append(f"🔴 **{nb_rouge}** produit(s) de +6 mois")
+                if nb_orange > 0: msg.append(f"🟠 **{nb_orange}** produit(s) de +3 mois")
+                st.markdown(f"<div class='stats-box'>⚠️ À consommer en priorité : {' / '.join(msg)}</div>", unsafe_allow_html=True)
+
         recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
