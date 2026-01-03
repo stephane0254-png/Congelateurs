@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import base64
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Titre de l'onglet navigateur
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
@@ -91,14 +91,16 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_mode = "alpha" # Retour au tri alphabétique par défaut
+    st.session_state.sort_mode = "alpha"
+    st.session_state.last_added_id = None
 
 # --- INTERFACE ---
 st.title("❄️ Stock congélateurs")
 
-# Initialisation du mode de tri par défaut à l'ouverture
 if 'sort_mode' not in st.session_state:
     st.session_state.sort_mode = "alpha"
+if 'last_added_id' not in st.session_state:
+    st.session_state.last_added_id = None
 
 tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
@@ -111,23 +113,19 @@ with tab1:
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-            # Tri alphabétique des contenants dans la liste
             list_options = sorted(df_cont["Nom"].tolist())
             cont_a = st.selectbox("Contenant", list_options)
             q_a = st.number_input("Nombre", min_value=1, step=1)
             
             if st.form_submit_button("Ajouter"):
+                # On génère un ID unique temporaire pour l'affichage immédiat
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{
-                    "Nom": n, 
-                    "Catégorie": cat_a, 
-                    "Contenant": cont_a, 
-                    "Lieu": loc_a, 
-                    "Nombre": int(q_a), 
-                    "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Précision pour le tri
+                    "Nom": n, "Catégorie": cat_a, "Contenant": cont_a, 
+                    "Lieu": loc_a, "Nombre": int(q_a), "Date": timestamp
                 }])
                 df = pd.concat([df, new_row], ignore_index=True)
-                # On force le tri sur "Plus récents" pour voir l'aliment en haut après l'ajout
-                st.session_state.sort_mode = "newest"
+                st.session_state.last_added_id = n + timestamp # Identifiant unique pour ce produit
                 update_stock(df, f"Ajout {n}")
 
     # FILTRES ET TRI
@@ -146,6 +144,13 @@ with tab1:
     d_f = df.copy()
     if not d_f.empty:
         d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
+        
+        # Application des filtres AVANT le tri final
+        if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
+        if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
+        if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
+        
+        # Tri de base
         if st.session_state.sort_mode == "alpha": 
             d_f = d_f.sort_values(by='Nom').reset_index()
             s_lbl = "🔤 Nom"
@@ -153,13 +158,18 @@ with tab1:
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
             s_lbl = "⌛ Plus anciens"
         else: 
-            # Mode NEWEST : Le dernier ajouté est en haut
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True], na_position='last').reset_index()
             s_lbl = "⌛ Plus récents"
 
-    if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
-    if f_cat != "Toutes": d_f = d_f[d_f['Catégorie'] == f_cat]
-    if f_loc != "Tous": d_f = d_f[d_f['Lieu'] == f_loc]
+        # --- LOGIQUE SPÉCIALE AJOUT ---
+        # Si on vient d'ajouter un produit, on le place en haut peu importe le tri
+        if st.session_state.last_added_id:
+            # On cherche si le produit est dans le dataframe filtré
+            mask = (d_f['Nom'] + d_f['Date'].astype(str)) == st.session_state.last_added_id
+            if mask.any():
+                added_row = d_f[mask]
+                other_rows = d_f[~mask]
+                d_f = pd.concat([added_row, other_rows])
 
     st.divider()
 
@@ -170,7 +180,7 @@ with tab1:
         st.caption(f"Tri : {s_lbl}")
         for _, row in d_f.iterrows():
             idx = row['index']
-            # Calcul couleur selon date (6 mois / 3 mois)
+            # Calcul couleur
             color = "#ddd"
             if row['Date']:
                 try:
@@ -181,9 +191,14 @@ with tab1:
             
             logo = LOGOS_CAT.get(row['Catégorie'], "📦")
             
+            # Encadré spécial si c'est le dernier ajouté
+            is_last = (row['Nom'] + str(row['Date'])) == st.session_state.last_added_id
+            border_style = "border: 2px solid #2e7d32;" if is_last else ""
+            
             st.markdown(f"""
-                <div class="product-card" style="border-left-color: {color};">
+                <div class="product-card" style="border-left-color: {color}; {border_style}">
                     <span class="badge-loc">📍 {row['Lieu']}</span>
+                    { '<span style="float:right; font-size:0.7rem; color:#2e7d32;">✨ NOUVEAU</span>' if is_last else '' }
                     <div class="card-title">{row['Nom']}</div>
                     <div class="card-meta">{logo} {row['Catégorie']} | 📦 {row['Contenant']}</div>
                 </div>
@@ -200,6 +215,7 @@ with tab1:
                 update_stock(df, f"Maj {row['Nom']}")
             if c_e.button("🍽️ Fini", key=f"e_{idx}"):
                 df = df.drop(idx).reset_index(drop=True)
+                if is_last: st.session_state.last_added_id = None
                 update_stock(df, f"Consommé {row['Nom']}")
             st.write("")
 
