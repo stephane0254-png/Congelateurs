@@ -5,41 +5,24 @@ import base64
 import requests
 from datetime import datetime
 
-# Configuration de la page
+# Titre de l'onglet navigateur
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
-# --- STYLE CSS (PROPRE) ---
+# --- CSS (Uniquement pour le cadre de la carte) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .product-card {
+    .product-box {
         background-color: white;
         border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 5px;
+        padding: 10px;
         border: 1px solid #ddd;
-        border-left: 8px solid #ddd;
+        margin-bottom: 5px;
     }
-    .badge-loc {
-        font-size: 0.7rem;
-        background-color: #e1f5fe;
-        color: #0288d1;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: bold;
-    }
-    .new-label {
-        float: right;
-        font-size: 0.7rem;
-        color: #2e7d32;
-        font-weight: bold;
-    }
-    .card-title { font-size: 1.1rem; font-weight: bold; margin-top: 5px; margin-bottom: 2px; color: black; }
-    .card-meta { font-size: 0.75rem; color: #666; }
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
-    .qty-display {
+    .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
-        line-height: 35px; background: #f0f2f6; border-radius: 4px; height: 35px;
+        background: #f0f2f6; border-radius: 4px; line-height: 35px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -62,7 +45,7 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT DES DONNÉES ---
+# --- CHARGEMENT ---
 if os.path.exists(FILE_CSV):
     try:
         df = pd.read_csv(FILE_CSV).fillna("")
@@ -80,15 +63,10 @@ if os.path.exists(FILE_CONTENANTS):
 else:
     df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
-# --- ACTIONS ---
+# --- FONCTIONS ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
-    st.rerun()
-
-def update_contenants(new_df, msg):
-    new_df.to_csv(FILE_CONTENANTS, index=False)
-    save_to_github(FILE_CONTENANTS, msg)
     st.rerun()
 
 # --- INTERFACE ---
@@ -131,7 +109,6 @@ with tab1:
         st.session_state.last_added_id = None
         st.rerun()
 
-    # TRI ET FILTRAGE
     working_df = df.copy()
     if not working_df.empty:
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
@@ -145,74 +122,70 @@ with tab1:
         else:
             working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True]).reset_index()
 
-        # Epinglage du dernier ajouté
+        # Épinglage
         if st.session_state.last_added_id:
             working_df['temp_id'] = working_df['Nom'] + "_" + working_df['Date'].astype(str)
             mask = working_df['temp_id'] == st.session_state.last_added_id
             if mask.any():
-                top = working_df[mask]
-                bottom = working_df[~mask]
-                working_df = pd.concat([top, bottom]).drop(columns=['temp_id'])
+                working_df = pd.concat([working_df[mask], working_df[~mask]]).drop(columns=['temp_id'])
 
-    # AFFICHAGE DES CARTES
+    # AFFICHAGE
     if working_df.empty:
-        st.info("Aucun produit trouvé.")
+        st.info("Aucun produit.")
     else:
         for _, row in working_df.iterrows():
             idx = row['index']
-            # Couleur selon date
-            b_color = "#ddd"
-            try:
-                diff = (datetime.now() - pd.to_datetime(row['Date'])).days
-                if diff >= 180: b_color = "#ff4b4b"
-                elif diff >= 90: b_color = "#ffa500"
-            except: pass
-            
-            # Détection nouveau
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
-            new_tag = '<div class="new-label">✨ NOUVEAU</div>' if is_new else ''
-            card_border = "border: 2px solid #2e7d32;" if is_new else ""
             
-            # GÉNÉRATION HTML UNIQUE (Anti-bug)
-            html_content = f"""
-            <div class="product-card" style="border-left: 8px solid {b_color}; {card_border}">
-                <span class="badge-loc">📍 {row['Lieu']}</span>
-                {new_tag}
-                <div class="card-title">{row['Nom']}</div>
-                <div class="card-meta">{LOGOS.get(row['Catégorie'], "📦")} {row['Catégorie']} | 📦 {row['Contenant']}</div>
-            </div>
-            """
-            st.markdown(html_content, unsafe_allow_html=True)
-            
-            # Boutons de contrôle
-            col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
-            if col1.button("➖", key=f"min_{idx}"):
-                if df.at[idx, 'Nombre'] > 1:
-                    df.at[idx, 'Nombre'] -= 1
-                    update_stock(df, "Moins")
-            col2.markdown(f"<div class='qty-display'>{row['Nombre']}</div>", unsafe_allow_html=True)
-            if col3.button("➕", key=f"plus_{idx}"):
-                df.at[idx, 'Nombre'] += 1
-                update_stock(df, "Plus")
-            if col4.button("🍽️ Fini", key=f"fin_{idx}"):
-                df = df.drop(idx).reset_index(drop=True)
-                st.session_state.last_added_id = None
-                update_stock(df, "Consommé")
-            st.write("")
+            # Utilisation de containers Streamlit natifs (Pas de HTML dans le texte !)
+            with st.container():
+                # On utilise une bordure conditionnelle via le markdown global ou juste l'affichage
+                st.markdown(f'<div class="product-box" style="border-left: 8px solid {"#2e7d32" if is_new else "#ddd"};">', unsafe_allow_html=True)
+                
+                # En-tête : Lieu et mention Nouveau
+                c_top1, c_top2 = st.columns([1, 1])
+                c_top1.caption(f"📍 {row['Lieu']}")
+                if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
+                
+                # Corps : Nom et Meta
+                st.subheader(row['Nom'])
+                st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Boutons
+                col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+                if col1.button("➖", key=f"min_{idx}"):
+                    if df.at[idx, 'Nombre'] > 1:
+                        df.at[idx, 'Nombre'] -= 1
+                        update_stock(df, "Moins")
+                col2.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
+                if col3.button("➕", key=f"plus_{idx}"):
+                    df.at[idx, 'Nombre'] += 1
+                    update_stock(df, "Plus")
+                if col4.button("🍽️ Fini", key=f"fin_{idx}"):
+                    df = df.drop(idx).reset_index(drop=True)
+                    st.session_state.last_added_id = None
+                    update_stock(df, "Fini")
+                st.write("")
 
 with tab2:
-    st.subheader("🛠️ Configuration des Contenants")
+    st.subheader("🛠️ Configuration")
+    # ... (Le reste du code pour les contenants reste identique et fonctionnel)
     with st.form("conf_cont", clear_on_submit=True):
-        new_c = st.text_input("Ajouter un type de contenant")
+        new_c = st.text_input("Ajouter un contenant")
         if st.form_submit_button("Valider"):
             if new_c and new_c not in df_cont["Nom"].values:
                 df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": new_c}])], ignore_index=True)
-                update_contenants(df_cont, f"Nouveau contenant: {new_c}")
+                df_cont.to_csv(FILE_CONTENANTS, index=False)
+                save_to_github(FILE_CONTENANTS, "Nouveau contenant")
+                st.rerun()
     
-    st.write("---")
     for i, r in df_cont.sort_values("Nom").iterrows():
         c_n, c_d = st.columns([4, 1])
         c_n.write(f"• {r['Nom']}")
         if c_d.button("🗑️", key=f"del_{i}"):
             df_cont = df_cont.drop(i).reset_index(drop=True)
-            update_contenants(df_cont, "Suppression contenant")
+            df_cont.to_csv(FILE_CONTENANTS, index=False)
+            save_to_github(FILE_CONTENANTS, "Suppr contenant")
+            st.rerun()
