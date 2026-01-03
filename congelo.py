@@ -56,7 +56,7 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT SÉCURISÉ ---
+# --- CHARGEMENT ---
 if os.path.exists(FILE_CSV):
     try:
         df = pd.read_csv(FILE_CSV).fillna("")
@@ -71,13 +71,10 @@ initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu",
 if os.path.exists(FILE_CONTENANTS):
     try:
         df_cont = pd.read_csv(FILE_CONTENANTS)
-        if df_cont.empty or "Nom" not in df_cont.columns: raise ValueError()
     except:
         df_cont = pd.DataFrame({"Nom": initial_cont})
-        df_cont.to_csv(FILE_CONTENANTS, index=False)
 else:
     df_cont = pd.DataFrame({"Nom": initial_cont})
-    df_cont.to_csv(FILE_CONTENANTS, index=False)
 
 # --- FONCTIONS ---
 def update_stock(new_df, msg):
@@ -94,16 +91,19 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_mode = "newest" # Reset sur le plus récent pour voir l'ajout
+    st.session_state.sort_mode = "alpha" # Retour au tri alphabétique par défaut
 
 # --- INTERFACE ---
 st.title("❄️ Stock congélateurs")
+
+# Initialisation du mode de tri par défaut à l'ouverture
+if 'sort_mode' not in st.session_state:
+    st.session_state.sort_mode = "alpha"
 
 tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
 with tab1:
     LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
-    if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "newest"
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
@@ -111,23 +111,30 @@ with tab1:
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
-            
-            # Tri alphabétique de la liste des contenants
-            list_options = sorted(df_cont["Nom"].tolist()) if not df_cont.empty else ["Standard"]
+            # Tri alphabétique des contenants dans la liste
+            list_options = sorted(df_cont["Nom"].tolist())
             cont_a = st.selectbox("Contenant", list_options)
-            
             q_a = st.number_input("Nombre", min_value=1, step=1)
+            
             if st.form_submit_button("Ajouter"):
-                new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
+                new_row = pd.DataFrame([{
+                    "Nom": n, 
+                    "Catégorie": cat_a, 
+                    "Contenant": cont_a, 
+                    "Lieu": loc_a, 
+                    "Nombre": int(q_a), 
+                    "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Précision pour le tri
+                }])
                 df = pd.concat([df, new_row], ignore_index=True)
-                st.session_state.sort_mode = "newest" # Forcer le tri récent pour voir l'ajout
+                # On force le tri sur "Plus récents" pour voir l'aliment en haut après l'ajout
+                st.session_state.sort_mode = "newest"
                 update_stock(df, f"Ajout {n}")
 
     # FILTRES ET TRI
     c_s, c_sort, c_r = st.columns([4, 1, 1])
     recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
     if c_sort.button("⌛"):
-        modes = ["newest", "alpha", "oldest"]
+        modes = ["alpha", "newest", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
     c_r.button("🔄", on_click=reset_all)
 
@@ -135,15 +142,7 @@ with tab1:
     f_cat = f1.selectbox("Catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val", label_visibility="collapsed")
     f_loc = f2.selectbox("Lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val", label_visibility="collapsed")
 
-    def get_status(date_str):
-        if not date_str: return "transparent"
-        try:
-            diff = (datetime.now() - datetime.strptime(str(date_str).split(" ")[0], "%Y-%m-%d")).days
-            if diff >= 180: return "#ff4b4b"
-            if diff >= 90: return "#ffa500"
-            return "#ddd"
-        except: return "#ddd"
-
+    # LOGIQUE DE TRI
     d_f = df.copy()
     if not d_f.empty:
         d_f['Date_dt'] = pd.to_datetime(d_f['Date'], errors='coerce')
@@ -154,8 +153,8 @@ with tab1:
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
             s_lbl = "⌛ Plus anciens"
         else: 
-            # Par défaut : "Plus récents" pour voir les derniers ajouts en haut
-            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
+            # Mode NEWEST : Le dernier ajouté est en haut
+            d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True], na_position='last').reset_index()
             s_lbl = "⌛ Plus récents"
 
     if recherche: d_f = d_f[d_f['Nom'].astype(str).str.contains(recherche, case=False)]
@@ -164,13 +163,22 @@ with tab1:
 
     st.divider()
 
+    # AFFICHAGE
     if d_f.empty:
         st.info("Aucun produit.")
     else:
         st.caption(f"Tri : {s_lbl}")
         for _, row in d_f.iterrows():
             idx = row['index']
-            color = get_status(row['Date'])
+            # Calcul couleur selon date (6 mois / 3 mois)
+            color = "#ddd"
+            if row['Date']:
+                try:
+                    diff = (datetime.now() - pd.to_datetime(row['Date'])).days
+                    if diff >= 180: color = "#ff4b4b"
+                    elif diff >= 90: color = "#ffa500"
+                except: pass
+            
             logo = LOGOS_CAT.get(row['Catégorie'], "📦")
             
             st.markdown(f"""
@@ -208,7 +216,6 @@ with tab2:
 
     st.write("---")
     st.write("**Liste actuelle :**")
-    # Tri aussi la liste de gestion pour plus de clarté
     for i, c_row in df_cont.sort_values("Nom").iterrows():
         col_name, col_del = st.columns([3, 1])
         col_name.write(f"- {c_row['Nom']}")
