@@ -8,22 +8,18 @@ from datetime import datetime
 # Titre de l'onglet navigateur
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
-# --- CSS (Cadre englobant tout le produit) ---
+# --- CSS (Style pour les boutons et l'espacement) ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    .product-box {
-        background-color: white;
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid #ddd;
-        margin-bottom: 15px; /* Espace entre les blocs produits */
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    }
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
     .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
         background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px;
+    }
+    /* Style pour simuler le bandeau de couleur à gauche du container */
+    [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) {
+        border-left-width: 10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -64,7 +60,6 @@ if os.path.exists(FILE_CONTENANTS):
 else:
     df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
-# --- FONCTIONS ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
@@ -136,49 +131,44 @@ with tab1:
             idx = row['index']
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
             
-            # Calcul de la couleur du bandeau selon l'ancienneté
-            status_color = "#ddd" # Par défaut gris
+            # Couleur du bandeau
+            status_color = "#ddd"
             if row['Date']:
                 try:
                     diff = (datetime.now() - pd.to_datetime(row['Date'])).days
-                    if diff >= 180: status_color = "#ff4b4b" # Rouge (6 mois)
-                    elif diff >= 90: status_color = "#ffa500" # Orange (3 mois)
+                    if diff >= 180: status_color = "#ff4b4b"
+                    elif diff >= 90: status_color = "#ffa500"
                 except: pass
-            
-            # Si c'est un nouveau produit, on force le vert
             if is_new: status_color = "#2e7d32"
 
-            # DEBUT DU BANDEAU ENGLOBANT
-            st.markdown(f'<div class="product-box" style="border-left: 10px solid {status_color};">', unsafe_allow_html=True)
-            
-            # Infos du haut
-            c_top1, c_top2 = st.columns([1, 1])
-            c_top1.caption(f"📍 {row['Lieu']}")
-            if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
-            
-            # Nom et détails
-            st.subheader(row['Nom'])
-            st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
-            
-            st.write("") # Petit espace avant les boutons
-            
-            # Boutons (Inclus dans le cadre)
-            col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
-            if col1.button("➖", key=f"min_{idx}"):
-                if df.at[idx, 'Nombre'] > 1:
-                    df.at[idx, 'Nombre'] -= 1
-                    update_stock(df, "Moins")
-            col2.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
-            if col3.button("➕", key=f"plus_{idx}"):
-                df.at[idx, 'Nombre'] += 1
-                update_stock(df, "Plus")
-            if col4.button("🍽️ Fini", key=f"fin_{idx}"):
-                df = df.drop(idx).reset_index(drop=True)
-                st.session_state.last_added_id = None
-                update_stock(df, "Fini")
-            
-            # FIN DU BANDEAU ENGLOBANT
-            st.markdown('</div>', unsafe_allow_html=True)
+            # --- LE CADRE ENGLOBANT (Container Natif) ---
+            with st.container(border=True):
+                # On insère une petite ligne colorée tout en haut pour le code couleur
+                st.markdown(f'<div style="height: 5px; background-color: {status_color}; border-radius: 5px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
+                
+                # Infos du haut
+                c_top1, c_top2 = st.columns([1, 1])
+                c_top1.caption(f"📍 {row['Lieu']}")
+                if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
+                
+                # Nom et détails
+                st.subheader(row['Nom'])
+                st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
+                
+                # Boutons (Désormais garantis d'être dans le cadre)
+                col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+                if col1.button("➖", key=f"min_{idx}"):
+                    if df.at[idx, 'Nombre'] > 1:
+                        df.at[idx, 'Nombre'] -= 1
+                        update_stock(df, "Moins")
+                col2.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
+                if col3.button("➕", key=f"plus_{idx}"):
+                    df.at[idx, 'Nombre'] += 1
+                    update_stock(df, "Plus")
+                if col4.button("🍽️ Fini", key=f"fin_{idx}"):
+                    df = df.drop(idx).reset_index(drop=True)
+                    st.session_state.last_added_id = None
+                    update_stock(df, "Fini")
 
 with tab2:
     st.subheader("🛠️ Configuration")
