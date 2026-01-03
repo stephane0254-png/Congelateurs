@@ -5,9 +5,10 @@ import base64
 import requests
 from datetime import datetime
 
-st.set_page_config(page_title="Congélo - Cartes", layout="wide")
+# Titre de l'onglet navigateur
+st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
-# --- CSS STYLE (Inchangé) ---
+# --- CSS STYLE ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -56,8 +57,6 @@ def save_to_github(file_path, commit_message):
         requests.put(url, headers=headers, json=data)
 
 # --- CHARGEMENT SÉCURISÉ ---
-
-# 1. Stock
 if os.path.exists(FILE_CSV):
     try:
         df = pd.read_csv(FILE_CSV).fillna("")
@@ -68,14 +67,11 @@ if os.path.exists(FILE_CSV):
 else:
     df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
 
-# 2. Contenants (Correction de l'erreur vide)
 initial_cont = ["Couvercle rouge", "Couvercle vert", "Grand bleu", "Petit bleu", "Plastique blanc", "Préemballage", "Pyrex", "Tupperware", "Verre Carré", "Moyen bleu"]
-
 if os.path.exists(FILE_CONTENANTS):
     try:
         df_cont = pd.read_csv(FILE_CONTENANTS)
-        if df_cont.empty or "Nom" not in df_cont.columns:
-            raise ValueError("Fichier mal formé")
+        if df_cont.empty or "Nom" not in df_cont.columns: raise ValueError()
     except:
         df_cont = pd.DataFrame({"Nom": initial_cont})
         df_cont.to_csv(FILE_CONTENANTS, index=False)
@@ -83,7 +79,7 @@ else:
     df_cont = pd.DataFrame({"Nom": initial_cont})
     df_cont.to_csv(FILE_CONTENANTS, index=False)
 
-# --- FONCTIONS DE MISE À JOUR ---
+# --- FONCTIONS ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
@@ -98,16 +94,16 @@ def reset_all():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_mode = "alpha"
+    st.session_state.sort_mode = "newest" # Reset sur le plus récent pour voir l'ajout
 
 # --- INTERFACE ---
-st.title("❄️ Mon Congélo")
+st.title("❄️ Stock congélateurs")
 
 tab1, tab2 = st.tabs(["📦 Stock", "⚙️ Configuration"])
 
 with tab1:
     LOGOS_CAT = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
-    if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
+    if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "newest"
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
@@ -116,21 +112,22 @@ with tab1:
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
             loc_a = c2.selectbox("Lieu", ["Cuisine", "Buanderie"])
             
-            # Sécurité pour la liste déroulante
-            list_options = df_cont["Nom"].tolist() if not df_cont.empty else ["Standard"]
+            # Tri alphabétique de la liste des contenants
+            list_options = sorted(df_cont["Nom"].tolist()) if not df_cont.empty else ["Standard"]
             cont_a = st.selectbox("Contenant", list_options)
             
             q_a = st.number_input("Nombre", min_value=1, step=1)
             if st.form_submit_button("Ajouter"):
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": datetime.now().strftime("%Y-%m-%d")}])
                 df = pd.concat([df, new_row], ignore_index=True)
+                st.session_state.sort_mode = "newest" # Forcer le tri récent pour voir l'ajout
                 update_stock(df, f"Ajout {n}")
 
     # FILTRES ET TRI
     c_s, c_sort, c_r = st.columns([4, 1, 1])
     recherche = c_s.text_input("🔍", placeholder="Chercher...", key="search_val", label_visibility="collapsed")
     if c_sort.button("⌛"):
-        modes = ["alpha", "oldest", "newest"]
+        modes = ["newest", "alpha", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
     c_r.button("🔄", on_click=reset_all)
 
@@ -157,6 +154,7 @@ with tab1:
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], na_position='last').reset_index()
             s_lbl = "⌛ Plus anciens"
         else: 
+            # Par défaut : "Plus récents" pour voir les derniers ajouts en haut
             d_f = d_f.sort_values(by=['Date_dt', 'Nom'], ascending=False, na_position='last').reset_index()
             s_lbl = "⌛ Plus récents"
 
@@ -199,7 +197,6 @@ with tab1:
 
 with tab2:
     st.subheader("🛠️ Gestion des Contenants")
-    
     with st.form("add_contenant", clear_on_submit=True):
         nouveau_cont = st.text_input("Nom du nouveau contenant")
         if st.form_submit_button("Ajouter le contenant"):
@@ -207,12 +204,12 @@ with tab2:
                 new_c_row = pd.DataFrame([{"Nom": nouveau_cont}])
                 df_cont = pd.concat([df_cont, new_c_row], ignore_index=True)
                 update_contenants(df_cont, f"Ajout contenant {nouveau_cont}")
-            else:
-                st.warning("Nom vide ou déjà existant.")
+            else: st.warning("Nom vide ou déjà existant.")
 
     st.write("---")
     st.write("**Liste actuelle :**")
-    for i, c_row in df_cont.iterrows():
+    # Tri aussi la liste de gestion pour plus de clarté
+    for i, c_row in df_cont.sort_values("Nom").iterrows():
         col_name, col_del = st.columns([3, 1])
         col_name.write(f"- {c_row['Nom']}")
         if col_del.button("🗑️", key=f"del_cont_{i}"):
