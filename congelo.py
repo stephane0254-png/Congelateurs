@@ -170,46 +170,46 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- ONGLET RÉCAPITULATIF CORRIGÉ (Lecture des dates robuste) ---
+# --- ONGLET RÉCAPITULATIF SÉCURISÉ (Version "Anti-Disparition") ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
-    lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
+    lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True, key="recap_lieu_radio")
     
+    # On travaille sur une copie propre
     recap_df = df.copy()
+    
     if not recap_df.empty:
+        # 1. Filtrage par lieu (On vérifie que le lieu correspond bien)
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
-        
-        # Tentative de conversion robuste
-        # On essaie d'abord avec le format jour en premier (JJ/MM/AAAA)
-        recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], dayfirst=True, errors='coerce')
-        
-        # Pour les lignes qui n'ont toujours pas de date (NaT), on tente une conversion automatique plus large
-        mask_inconnu = recap_df['Date_dt'].isna() & (recap_df['Date'] != "")
-        if mask_inconnu.any():
-            recap_df.loc[mask_inconnu, 'Date_dt'] = pd.to_datetime(recap_df.loc[mask_inconnu, 'Date'], errors='coerce')
-
-        # Tri chronologique (00:00:00 par défaut si l'heure manque)
-        recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
             st.info(f"Le congélateur {lieu_recap} est vide.")
         else:
-            st.write(f"**Produits dans {lieu_recap} (triés par ancienneté) :**")
+            # 2. Conversion de date ultra-souple (format par format)
+            # On crée la colonne Date_dt sans bloquer le reste
+            recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
+            
+            # 3. Tri (Les produits avec erreur de date iront à la fin)
+            recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
+            
+            st.write(f"**Produits dans {lieu_recap} :**")
             for _, row in recap_df.iterrows():
                 icon = "⚪"
+                # Calcul de la couleur si la date est valide
                 if pd.notna(row['Date_dt']):
                     diff = (datetime.now() - row['Date_dt']).days
                     if diff >= 180: icon = "🔴"
                     elif diff >= 90: icon = "🟠"
                     date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
                 else:
-                    # Si c'est vraiment inconnu, on affiche quand même la valeur brute du CSV pour comprendre l'erreur
-                    valeur_brute = row['Date'] if row['Date'] else "Vide"
-                    date_display = f"(Format inconnu : {valeur_brute})"
+                    # SI LA DATE EST ILLISIBLE, ON AFFICHE LA VALEUR BRUTE DU CSV
+                    # Cela évite de perdre le produit de la liste
+                    valeur_brute = str(row['Date']) if row['Date'] else "Date absente"
+                    date_display = f"(Date: {valeur_brute})"
                 
                 st.text(f"{icon} {row['Nom']} - Qté: {row['Nombre']} {date_display}")
     else:
-        st.info("Aucun produit en stock.")
+        st.error("Le fichier de stock semble vide ou illisible.")
 
 with tab2:
     st.subheader("🛠️ Configuration")
