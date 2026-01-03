@@ -41,15 +41,23 @@ def save_to_github(file_path, commit_message):
         if sha: data["sha"] = sha
         requests.put(url, headers=headers, json=data)
 
-# --- CHARGEMENT ---
-if os.path.exists(FILE_CSV):
-    try:
-        df = pd.read_csv(FILE_CSV).fillna("")
-        df = df.rename(columns={'nom': 'Nom', 'catégorie': 'Catégorie', 'nombre': 'Nombre', 'lieu': 'Lieu', 'date': 'Date', 'contenant': 'Contenant'})
-    except:
-        df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
-else:
-    df = pd.DataFrame(columns=["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"])
+# --- CHARGEMENT SÉCURISÉ ---
+def load_data():
+    cols = ["Nom", "Catégorie", "Nombre", "Lieu", "Date", "Contenant"]
+    if os.path.exists(FILE_CSV):
+        try:
+            temp_df = pd.read_csv(FILE_CSV).fillna("")
+            # Harmonisation des noms de colonnes (minuscules/majuscules)
+            temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
+            # S'assurer que toutes les colonnes requises existent
+            for c in cols:
+                if c not in temp_df.columns: temp_df[c] = ""
+            return temp_df[cols]
+        except:
+            return pd.DataFrame(columns=cols)
+    return pd.DataFrame(columns=cols)
+
+df = load_data()
 
 if os.path.exists(FILE_CONTENANTS):
     try:
@@ -114,39 +122,33 @@ with tab1:
 
     working_df = df.copy()
     if not working_df.empty:
-        # Harmonisation : On s'assure que toutes les dates sont des objets datetime valides
-        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
+        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce', dayfirst=True)
         
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
         
         if st.session_state.sort_mode == "alpha":
-            working_df = working_df.sort_values(by='Nom').reset_index()
+            working_df = working_df.sort_values(by='Nom')
         elif st.session_state.sort_mode == "oldest":
-            working_df = working_df.sort_values(by=['Date_dt', 'Nom']).reset_index()
+            working_df = working_df.sort_values(by=['Date_dt', 'Nom'])
         else:
-            working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True]).reset_index()
+            working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True])
 
-        if st.session_state.last_added_id:
-            working_df['temp_id'] = working_df['Nom'] + "_" + working_df['Date'].astype(str)
-            mask = working_df['temp_id'] == st.session_state.last_added_id
-            if mask.any():
-                working_df = pd.concat([working_df[mask], working_df[~mask]]).drop(columns=['temp_id'])
+        # Récupération des index après tri
+        working_df = working_df.reset_index()
 
     if working_df.empty:
         st.info("Aucun produit trouvé.")
     else:
         for _, row in working_df.iterrows():
-            idx = row['index']
+            orig_idx = row['index']
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
             status_color = "#ddd"
             if pd.notna(row['Date_dt']):
-                try:
-                    diff = (datetime.now() - row['Date_dt']).days
-                    if diff >= 180: status_color = "#ff4b4b"
-                    elif diff >= 90: status_color = "#ffa500"
-                except: pass
+                diff = (datetime.now() - row['Date_dt']).days
+                if diff >= 180: status_color = "#ff4b4b"
+                elif diff >= 90: status_color = "#ffa500"
             if is_new: status_color = "#2e7d32"
 
             with st.container(border=True):
@@ -157,59 +159,47 @@ with tab1:
                 st.subheader(row['Nom'])
                 st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
-                if col1.button("➖", key=f"min_{idx}"):
-                    if df.at[idx, 'Nombre'] > 1:
-                        df.at[idx, 'Nombre'] -= 1
+                if col1.button("➖", key=f"min_{orig_idx}"):
+                    if df.at[orig_idx, 'Nombre'] > 1:
+                        df.at[orig_idx, 'Nombre'] -= 1
                         update_stock(df, "Moins")
                 col2.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
-                if col3.button("➕", key=f"plus_{idx}"):
-                    df.at[idx, 'Nombre'] += 1
+                if col3.button("➕", key=f"plus_{orig_idx}"):
+                    df.at[orig_idx, 'Nombre'] += 1
                     update_stock(df, "Plus")
-                if col4.button("🍽️ Fini", key=f"fin_{idx}"):
-                    df = df.drop(idx).reset_index(drop=True)
+                if col4.button("🍽️ Fini", key=f"fin_{orig_idx}"):
+                    df = df.drop(orig_idx).reset_index(drop=True)
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- ONGLET RÉCAPITULATIF SÉCURISÉ (Version "Anti-Disparition") ---
+# --- RÉCAPITULATIF SÉCURISÉ ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
-    lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True, key="recap_lieu_radio")
+    lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True, key="radio_recap")
     
-    # On travaille sur une copie propre
     recap_df = df.copy()
-    
     if not recap_df.empty:
-        # 1. Filtrage par lieu (On vérifie que le lieu correspond bien)
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
+        recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
+        recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
             st.info(f"Le congélateur {lieu_recap} est vide.")
         else:
-            # 2. Conversion de date ultra-souple (format par format)
-            # On crée la colonne Date_dt sans bloquer le reste
-            recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
-            
-            # 3. Tri (Les produits avec erreur de date iront à la fin)
-            recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
-            
-            st.write(f"**Produits dans {lieu_recap} :**")
+            st.write(f"**Produits dans {lieu_recap} (par ancienneté) :**")
             for _, row in recap_df.iterrows():
                 icon = "⚪"
-                # Calcul de la couleur si la date est valide
                 if pd.notna(row['Date_dt']):
                     diff = (datetime.now() - row['Date_dt']).days
                     if diff >= 180: icon = "🔴"
                     elif diff >= 90: icon = "🟠"
                     date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
                 else:
-                    # SI LA DATE EST ILLISIBLE, ON AFFICHE LA VALEUR BRUTE DU CSV
-                    # Cela évite de perdre le produit de la liste
-                    valeur_brute = str(row['Date']) if row['Date'] else "Date absente"
-                    date_display = f"(Date: {valeur_brute})"
+                    date_display = f"(Date: {row['Date']})" if row['Date'] else "(Pas de date)"
                 
                 st.text(f"{icon} {row['Nom']} - Qté: {row['Nombre']} {date_display}")
     else:
-        st.error("Le fichier de stock semble vide ou illisible.")
+        st.info("Le stock est vide.")
 
 with tab2:
     st.subheader("🛠️ Configuration")
