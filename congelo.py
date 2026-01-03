@@ -8,7 +8,7 @@ from datetime import datetime
 # Titre de l'onglet navigateur
 st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
-# --- CSS (Style pour les boutons et l'espacement) ---
+# --- CSS ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
@@ -59,10 +59,19 @@ if os.path.exists(FILE_CONTENANTS):
 else:
     df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
+# --- FONCTIONS ---
 def update_stock(new_df, msg):
     new_df.to_csv(FILE_CSV, index=False)
     save_to_github(FILE_CSV, msg)
     st.rerun()
+
+def reset_filters():
+    """Fonction de rappel pour réinitialiser les filtres sans erreur"""
+    st.session_state.search_val = ""
+    st.session_state.cat_val = "Toutes"
+    st.session_state.loc_val = "Tous"
+    st.session_state.sort_mode = "alpha"
+    st.session_state.last_added_id = None
 
 # --- INTERFACE ---
 st.title("❄️ Stock congélateurs")
@@ -94,19 +103,18 @@ with tab1:
 
     # FILTRES ET TRI
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
+    # On s'assure que les clés existent dans le session_state avant le premier affichage
+    if "search_val" not in st.session_state: st.session_state.search_val = ""
+    
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
+    
     if c_sort.button("⌛"):
         modes = ["alpha", "newest", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
-    if c_reset.button("🔄"):
-        st.session_state.search_val = ""
-        st.session_state.cat_val = "Toutes"
-        st.session_state.loc_val = "Tous"
-        st.session_state.sort_mode = "alpha"
-        st.session_state.last_added_id = None
-        st.rerun()
+    
+    # Utilisation du callback on_click pour éviter l'erreur API
+    c_reset.button("🔄", on_click=reset_filters)
 
-    # Filtres de Catégorie et Lieu
     f1, f2 = st.columns(2)
     f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val")
     f_loc = f2.selectbox("Filtrer par lieu", ["Tous", "Cuisine", "Buanderie"], key="loc_val")
@@ -115,12 +123,10 @@ with tab1:
     if not working_df.empty:
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
         
-        # Application des filtres
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
         
-        # Tri principal
         if st.session_state.sort_mode == "alpha":
             working_df = working_df.sort_values(by='Nom').reset_index()
         elif st.session_state.sort_mode == "oldest":
@@ -128,7 +134,6 @@ with tab1:
         else:
             working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True]).reset_index()
 
-        # Épinglage
         if st.session_state.last_added_id:
             working_df['temp_id'] = working_df['Nom'] + "_" + working_df['Date'].astype(str)
             mask = working_df['temp_id'] == st.session_state.last_added_id
@@ -143,7 +148,6 @@ with tab1:
             idx = row['index']
             is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
             
-            # Couleur du bandeau
             status_color = "#ddd"
             if row['Date']:
                 try:
