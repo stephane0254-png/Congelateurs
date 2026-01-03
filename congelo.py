@@ -169,33 +169,37 @@ with tab1:
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- NOUVEL ONGLET RÉCAPITULATIF ---
+# --- NOUVEL ONGLET RÉCAPITULATIF CORRIGÉ ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True)
     
     recap_df = df.copy()
     if not recap_df.empty:
-        # Filtrer par lieu choisi
+        # 1. Filtrer par lieu
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
-        # Convertir et trier du plus ancien au plus récent
+        
+        # 2. Conversion forcée en format Date pour un tri fiable
+        # errors='coerce' transformera les dates illisibles en NaT (Not a Time)
         recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
-        recap_df = recap_df.sort_values(by=['Date_dt', 'Nom'], na_position='last')
+        
+        # 3. Tri chronologique (du plus ancien au plus récent)
+        # na_position='last' place les produits sans date à la fin
+        recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
         
         if recap_df.empty:
             st.info(f"Le congélateur {lieu_recap} est vide.")
         else:
-            st.write(f"**Produits dans {lieu_recap} (du plus ancien au plus récent) :**")
+            st.write(f"**Produits dans {lieu_recap} (triés par date de congélation) :**")
             for _, row in recap_df.iterrows():
-                # Formatage de la date pour l'affichage si elle existe
-                date_str = ""
-                if row['Date']:
-                    try:
-                        d_obj = pd.to_datetime(row['Date'])
-                        date_str = f"({d_obj.strftime('%d/%m/%Y')})"
-                    except: pass
+                # Affichage propre de la date si elle existe
+                if pd.notna(row['Date_dt']):
+                    date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
+                else:
+                    date_display = "(Date inconnue)"
                 
-                st.text(f"• {row['Nom']} - Qté: {row['Nombre']} {date_str}")
+                # Liste textuelle simple
+                st.text(f"• {row['Nom']} - Qté: {row['Nombre']} {date_display}")
     else:
         st.info("Aucun produit en stock.")
 
