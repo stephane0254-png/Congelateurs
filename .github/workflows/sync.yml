@@ -16,5 +16,5 @@ jobs:
 
       - name: Push to Mirror
         run: |
-          git remote add mirror https://${{ secrets.SYNC_TOKEN }}@github.com/votre-nom/votre-depot-backup.git
+          git remote add mirror https://${{ secrets.SYNC_TOKEN }}@github.com/stephane0254-png/Congelateur_Maman.git
           git push --force --prune mirror "refs/remotes/origin/*:refs/heads/*"
