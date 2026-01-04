@@ -1,0 +1,20 @@
+name: Sync to Backup
+
+on:
+  push:
+    branches:
+      - main  # Ou 'master' selon le nom de votre branche principale
+
+jobs:
+  git-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Mirror
+        run: |
+          git remote add mirror https://${{ secrets.SYNC_TOKEN }}@github.com/votre-nom/votre-depot-backup.git
+          git push --force --prune mirror "refs/remotes/origin/*:refs/heads/*"
