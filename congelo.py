@@ -79,7 +79,7 @@ def reset_filters():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
     st.session_state.loc_val = "Tous"
-    st.session_state.sort_mode = "alpha"
+    st.session_state.sort_mode = "alpha" 
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
@@ -106,13 +106,14 @@ with tab1:
             if st.form_submit_button("Ajouter"):
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Date": ts}])
-                df = pd.concat([df, new_row], ignore_index=True)
+                df = pd.concat([new_row, df], ignore_index=True)
                 st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
     if "search_val" not in st.session_state: st.session_state.search_val = ""
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
+    
     if c_sort.button("⌛"):
         modes = ["alpha", "newest", "oldest"]
         st.session_state.sort_mode = modes[(modes.index(st.session_state.sort_mode) + 1) % 3]
@@ -129,12 +130,19 @@ with tab1:
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
         
+        # --- LOGIQUE DE TRI PERSONNALISÉE ---
+        # On crée une colonne temporaire pour identifier le dernier ajouté
+        working_df['is_last'] = (working_df['Nom'] + "_" + working_df['Date']) == st.session_state.last_added_id
+        
         if st.session_state.sort_mode == "alpha":
-            working_df = working_df.sort_values(by='Nom')
+            # On trie d'abord par 'is_last' (True arrive après False, donc on met ascending=False pour avoir True en haut)
+            # Puis par Nom
+            working_df = working_df.sort_values(by=['is_last', 'Nom'], ascending=[False, True])
         elif st.session_state.sort_mode == "oldest":
-            working_df = working_df.sort_values(by=['Date_dt', 'Nom'])
-        else:
-            working_df = working_df.sort_values(by=['Date_dt', 'Nom'], ascending=[False, True])
+            working_df = working_df.sort_values(by=['is_last', 'Date_dt', 'Nom'], ascending=[False, True, True])
+        elif st.session_state.sort_mode == "newest":
+            working_df = working_df.sort_values(by=['is_last', 'Date_dt', 'Nom'], ascending=[False, False, True])
+        
         working_df = working_df.reset_index()
 
     if working_df.empty:
@@ -142,7 +150,7 @@ with tab1:
     else:
         for _, row in working_df.iterrows():
             orig_idx = row['index']
-            is_new = (f"{row['Nom']}_{row['Date']}") == st.session_state.last_added_id
+            is_new = row['is_last'] # Utilisation de la colonne de tri
             status_color = "#ddd"
             if pd.notna(row['Date_dt']):
                 diff = (datetime.now() - row['Date_dt']).days
@@ -158,20 +166,24 @@ with tab1:
                 st.subheader(row['Nom'])
                 st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
                 col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+                
                 if col1.button("➖", key=f"min_{orig_idx}"):
                     if df.at[orig_idx, 'Nombre'] > 1:
                         df.at[orig_idx, 'Nombre'] -= 1
                         update_stock(df, "Moins")
+                
                 col2.markdown(f"<div class='qty-text'>{row['Nombre']}</div>", unsafe_allow_html=True)
+                
                 if col3.button("➕", key=f"plus_{orig_idx}"):
                     df.at[orig_idx, 'Nombre'] += 1
                     update_stock(df, "Plus")
+                
                 if col4.button("🍽️ Fini", key=f"fin_{orig_idx}"):
                     df = df.drop(orig_idx).reset_index(drop=True)
                     st.session_state.last_added_id = None
                     update_stock(df, "Fini")
 
-# --- RÉCAPITULATIF AVEC STATS ---
+# --- RÉCAPITULATIF ---
 with tab_recap:
     st.subheader("📋 Liste par congélateur")
     lieu_recap = st.radio("Choisir le lieu :", ["Cuisine", "Buanderie"], horizontal=True, key="radio_recap")
@@ -181,7 +193,6 @@ with tab_recap:
         recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
         recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
         
-        # Calcul des statistiques d'ancienneté pour le lieu choisi
         if not recap_df.empty:
             now = datetime.now()
             nb_rouge = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 180)])
@@ -213,6 +224,7 @@ with tab_recap:
     else:
         st.info("Le stock est vide.")
 
+# --- CONFIGURATION ---
 with tab2:
     st.subheader("🛠️ Configuration")
     with st.form("conf_cont", clear_on_submit=True):
