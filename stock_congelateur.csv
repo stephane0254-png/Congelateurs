@@ -1,35 +1,36 @@
-Nom,Catégorie,Nombre,Lieu,Date,Contenant
-Foie gras cru,Plat cuisiné,2,Buanderie,26/12/2025 14:40:34,Autre
-Portion de colin panée,Surgelé,2,Cuisine,26/12/2025 17:52:06,Préemballage
-"Boulettes party (boeuf, riz et légumes)",Surgelé,1,Cuisine,26/12/2025 17:53:28,Préemballage
-Brocolis (kg),Surgelé,1,Buanderie,26/12/2025 18:08:11,Préemballage
-Raclette fumée (parts),Surgelé,3,Buanderie,26/12/2025 18:10:02,Préemballage
-Raclette (parts),Surgelé,1,Buanderie,26/12/2025 18:10:19,Plastique blanc
-Brioche,Surgelé,1,Cuisine,26/12/2025 18:13:42,Préemballage
-Munstiflette,Plat cuisiné,1,Cuisine,26/12/2025 18:14:18,Couvercle rouge
-Cuisse de poulet et grenailles,Plat cuisiné,1,Cuisine,26/12/2025 18:14:40,Verre Carré
-Filet de saumon,Surgelé,2,Cuisine,26/12/2025 18:15:38,Préemballage
-Filet de cabillaud,Surgelé,2,Cuisine,26/12/2025 18:17:18,Préemballage
-Courge en cubes (parts),Surgelé,3,Buanderie,26/08/2025 18:21:02,Sachet
-Morceau de baguette,Surgelé,8,Cuisine,26/12/2025 18:21:29,Sachet
-3 knacks et 1 saucisse fumée,Surgelé,1,Cuisine,26/12/2025 18:21:55,Sachet
-Sauce échalote,Plat cuisiné,2,Cuisine,27/12/2025 12:27:32,Plastique blanc
-Saumon fumé x5 tranches,Autre,2,Buanderie,2025-12-29,Pyrex
-Bûche Nadège,Autre,6,Buanderie,2025-12-29,Pyrex
-Frites (parts),Surgelé,1,Cuisine,2026-01-03,Préemballage
-Frites (parts),Surgelé,4,Buanderie,2026-01-03,Préemballage
-16 mini-feuilletés d’escargots,Surgelé,1,Buanderie,2026-01-03,Préemballage
-30 mini feuilletés saveurs du soleil,Surgelé,1,Buanderie,2026-01-03,Préemballage
-Noix de Saint-Jacques (300g),Surgelé,1,Buanderie,2026-01-03,Préemballage
-Riz à la cantonaise,Surgelé,2,Buanderie,2026-01-03,Préemballage
-6 beignets de crevette,Surgelé,1,Buanderie,2026-01-03,Préemballage
-6 brochettes de bœuf au fromage,Surgelé,1,Buanderie,2026-01-03,Préemballage
-8 bouchées de poulet au saté,Surgelé,1,Buanderie,2026-01-03,Préemballage
-8 brochettes de poulet thaï,Surgelé,1,Buanderie,2026-01-03,Préemballage
-8 nems au porc,Surgelé,1,Buanderie,2026-01-03,Préemballage
-12 yakitori,Surgelé,1,Buanderie,2026-01-03,Préemballage
-Haut cuisse poulet cuite,Plat cuisiné,1,Cuisine,2026-01-03,Tupperware
-Magret de canard,Surgelé,1,Buanderie,2026-01-03 13:49:16,Sachet
-Petit salé aux lentilles,Plat cuisiné,2,Cuisine,2026-01-05 17:45:15,Pyrex
-"Penne au poulet doré, poireaux et gouda",Plat cuisiné,1,Cuisine,2026-01-07 19:02:46,Couvercle vert
-Nouilles sautées au bœuf,Plat cuisiné,2,Buanderie,2026-01-08 06:51:42,Grand bleu
+Nom,Catégorie,Contenant,Lieu,Nombre,Date
+Bun’s Jambon ketchup x4,Surgelé,Préemballage,Buanderie,2,2026-01-09 17:52:21
+Foie gras cru,Plat cuisiné,Autre,Buanderie,2,26/12/2025 14:40:34
+Portion de colin panée,Surgelé,Préemballage,Cuisine,2,26/12/2025 17:52:06
+"Boulettes party (boeuf, riz et légumes)",Surgelé,Préemballage,Cuisine,1,26/12/2025 17:53:28
+Brocolis (kg),Surgelé,Préemballage,Buanderie,1,26/12/2025 18:08:11
+Raclette fumée (parts),Surgelé,Préemballage,Buanderie,3,26/12/2025 18:10:02
+Raclette (parts),Surgelé,Plastique blanc,Buanderie,1,26/12/2025 18:10:19
+Brioche,Surgelé,Préemballage,Cuisine,1,26/12/2025 18:13:42
+Munstiflette,Plat cuisiné,Couvercle rouge,Cuisine,1,26/12/2025 18:14:18
+Cuisse de poulet et grenailles,Plat cuisiné,Verre Carré,Cuisine,1,26/12/2025 18:14:40
+Filet de saumon,Surgelé,Préemballage,Cuisine,2,26/12/2025 18:15:38
+Filet de cabillaud,Surgelé,Préemballage,Cuisine,2,26/12/2025 18:17:18
+Courge en cubes (parts),Surgelé,Sachet,Buanderie,3,26/08/2025 18:21:02
+Morceau de baguette,Surgelé,Sachet,Cuisine,8,26/12/2025 18:21:29
+3 knacks et 1 saucisse fumée,Surgelé,Sachet,Cuisine,1,26/12/2025 18:21:55
+Sauce échalote,Plat cuisiné,Plastique blanc,Cuisine,2,27/12/2025 12:27:32
+Saumon fumé x5 tranches,Autre,Pyrex,Buanderie,2,2025-12-29
+Bûche Nadège,Autre,Pyrex,Buanderie,6,2025-12-29
+Frites (parts),Surgelé,Préemballage,Cuisine,1,2026-01-03
+Frites (parts),Surgelé,Préemballage,Buanderie,4,2026-01-03
+16 mini-feuilletés d’escargots,Surgelé,Préemballage,Buanderie,1,2026-01-03
+30 mini feuilletés saveurs du soleil,Surgelé,Préemballage,Buanderie,1,2026-01-03
+Noix de Saint-Jacques (300g),Surgelé,Préemballage,Buanderie,1,2026-01-03
+Riz à la cantonaise,Surgelé,Préemballage,Buanderie,2,2026-01-03
+6 beignets de crevette,Surgelé,Préemballage,Buanderie,1,2026-01-03
+6 brochettes de bœuf au fromage,Surgelé,Préemballage,Buanderie,1,2026-01-03
+8 bouchées de poulet au saté,Surgelé,Préemballage,Buanderie,1,2026-01-03
+8 brochettes de poulet thaï,Surgelé,Préemballage,Buanderie,1,2026-01-03
+8 nems au porc,Surgelé,Préemballage,Buanderie,1,2026-01-03
+12 yakitori,Surgelé,Préemballage,Buanderie,1,2026-01-03
+Haut cuisse poulet cuite,Plat cuisiné,Tupperware,Cuisine,1,2026-01-03
+Magret de canard,Surgelé,Sachet,Buanderie,1,2026-01-03 13:49:16
+Petit salé aux lentilles,Plat cuisiné,Pyrex,Cuisine,2,2026-01-05 17:45:15
+"Penne au poulet doré, poireaux et gouda",Plat cuisiné,Couvercle vert,Cuisine,1,2026-01-07 19:02:46
+Nouilles sautées au bœuf,Plat cuisiné,Grand bleu,Buanderie,2,2026-01-08 06:51:42
