@@ -6,12 +6,13 @@ import requests
 from datetime import datetime
 
 # Titre de l'onglet navigateur
-st.set_page_config(page_title="Stock congélateurs", layout="wide")
+st.set_page_config(page_title="Gestion des stocks", layout="wide")
 
 # --- CSS ---
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
+    h1 { font-size: 2rem !important; } /* Réduction de la taille du titre */
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
     .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
@@ -87,7 +88,7 @@ def reset_filters():
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
-st.title("❄️ Stock congélateurs")
+st.title("❄️ Gestion des stocks")
 
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
