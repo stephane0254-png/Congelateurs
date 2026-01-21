@@ -11,15 +11,23 @@ st.set_page_config(page_title="Gestion des stocks", layout="wide")
 # --- CSS ---
 st.markdown("""
     <style>
-    .block-container { padding: 1rem !important; }
+    /* Supprime l'espace vide excessif en haut de Streamlit */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
     
-    /* Style du titre pour éviter qu'il soit tronqué */
+    /* Style du titre pour qu'il ne soit plus jamais tronqué */
     .main-title {
         font-size: 2.2rem !important;
         font-weight: bold;
-        margin-bottom: 1rem;
-        margin-top: -2rem; /* Remonte légèrement le titre */
-        display: block;
+        padding-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        line-height: 1.4 !important; /* Donne de l'air au texte */
     }
     
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
@@ -97,8 +105,8 @@ def reset_filters():
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
-# Titre personnalisé avec l'icône meuble à tiroirs
-st.markdown('<p class="main-title">🗄️ Gestion des stocks</p>', unsafe_allow_html=True)
+# Titre avec icône meuble à tiroirs 🗄️
+st.markdown('<div class="main-title">🗄️ Gestion des stocks</div>', unsafe_allow_html=True)
 
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
