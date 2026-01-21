@@ -11,12 +11,17 @@ st.set_page_config(page_title="Gestion des stocks", layout="wide")
 # --- CSS ---
 st.markdown("""
     <style>
-    .block-container { padding: 0.5rem !important; }
-    h1 { 
-        font-size: 2rem !important; 
-        padding-top: 1rem !important; /* Ajout d'espace en haut */
-        line-height: 1.2 !important;  /* Ajustement de la hauteur de ligne */
-    } 
+    .block-container { padding: 1rem !important; }
+    
+    /* Style du titre pour éviter qu'il soit tronqué */
+    .main-title {
+        font-size: 2.2rem !important;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        margin-top: -2rem; /* Remonte légèrement le titre */
+        display: block;
+    }
+    
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
     .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
@@ -92,7 +97,8 @@ def reset_filters():
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
-st.title("❄️ Gestion des stocks")
+# Titre personnalisé avec l'icône meuble à tiroirs
+st.markdown('<p class="main-title">🗄️ Gestion des stocks</p>', unsafe_allow_html=True)
 
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
