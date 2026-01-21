@@ -12,7 +12,11 @@ st.set_page_config(page_title="Gestion des stocks", layout="wide")
 st.markdown("""
     <style>
     .block-container { padding: 0.5rem !important; }
-    h1 { font-size: 2rem !important; } /* Réduction de la taille du titre */
+    h1 { 
+        font-size: 2rem !important; 
+        padding-top: 1rem !important; /* Ajout d'espace en haut */
+        line-height: 1.2 !important;  /* Ajustement de la hauteur de ligne */
+    } 
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
     .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
@@ -192,7 +196,7 @@ with tab1:
 
 # --- RÉCAPITULATIF ---
 with tab_recap:
-    st.subheader("📋 Liste par congélateur")
+    st.subheader("📋 Liste par lieu")
     liste_lieux_recap = sorted(df_lieux["Nom"].tolist())
     if not liste_lieux_recap:
         st.warning("Veuillez créer un lieu dans l'onglet 'Lieux' d'abord.")
@@ -211,7 +215,7 @@ with tab_recap:
                     st.markdown(f"<div class='stats-box'>⚠️ À consommer : {' / '.join(filter(None, msg))}</div>", unsafe_allow_html=True)
 
             recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
-            if recap_df.empty: st.info(f"Le congélateur {lieu_recap} est vide.")
+            if recap_df.empty: st.info(f"Le lieu {lieu_recap} est vide.")
             else:
                 for _, row in recap_df.iterrows():
                     icon = "⚪"
