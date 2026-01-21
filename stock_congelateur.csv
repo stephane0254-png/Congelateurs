@@ -1,31 +1,32 @@
-Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
-Riz cantonais (formule express),Surgelé,2,Portions,Buanderie,2026-01-21 17:14:23,Préemballage
-Blanquette sans riz,Plat cuisiné,2,Portions,Cuisine,2026-01-14 07:27:11,Plastique blanc
-Blanquette de veau,Plat cuisiné,1,Portions,Cuisine,2026-01-14 07:26:35,Petit bleu
-Pain,Autre,4,Portions,Cuisine,2026-01-10 19:51:45,Sac réutilisable bleu
-Plateau de mini pizzas,Surgelé,1,Portions,Buanderie,2026-01-10 19:10:10,Plateau rectangulaire
-Linguine chorizo,Plat cuisiné,1,Portions,Cuisine,2026-01-10 14:47:56,Pyrex
-Curry rouge de dinde - Riz,Plat cuisiné,2,Portions,Cuisine,2026-01-09 18:25:59,Moyen bleu
-Bun’s Bolognaise x4,Surgelé,1,Portions,Buanderie,2026-01-09 17:52:43,Préemballage
-Bun’s Jambon ketchup x4,Surgelé,2,Portions,Buanderie,2026-01-09 17:52:21,Préemballage
-Foie gras cru,Plat cuisiné,2,Portions,Buanderie,26/12/2025 14:40:34,Autre
-Portion de colin panée,Surgelé,2,Portions,Cuisine,26/12/2025 17:52:06,Préemballage
-Brocolis (kg),Surgelé,1,Portions,Buanderie,26/12/2025 18:08:11,Préemballage
-Raclette fumée (parts),Surgelé,3,Portions,Buanderie,26/12/2025 18:10:02,Préemballage
-Raclette (parts),Surgelé,1,Portions,Buanderie,26/12/2025 18:10:19,Plastique blanc
-Brioche,Surgelé,1,Portions,Cuisine,26/12/2025 18:13:42,Préemballage
-Filet de saumon,Surgelé,2,Portions,Cuisine,26/12/2025 18:15:38,Préemballage
-Filet de cabillaud,Surgelé,2,Portions,Cuisine,26/12/2025 18:17:18,Préemballage
-Courge en cubes (parts),Surgelé,3,Portions,Buanderie,26/08/2025 18:21:02,Sachet
-Morceau de baguette,Surgelé,7,Portions,Cuisine,26/12/2025 18:21:29,Sachet
-3 knacks et 1 saucisse fumée,Surgelé,1,Portions,Cuisine,26/12/2025 18:21:55,Sachet
-Saumon fumé x5 tranches,Autre,2,Portions,Buanderie,2025-12-29,Pyrex
-Bûche Nadège,Autre,6,Portions,Buanderie,2025-12-29,Pyrex
-Frites (parts),Surgelé,3,Portions,Buanderie,2026-01-03,Préemballage
-Riz à la cantonaise,Surgelé,1,Portions,Buanderie,2026-01-03,Préemballage
-8 brochettes de poulet thaï,Surgelé,1,Portions,Buanderie,2026-01-03,Préemballage
-12 yakitori,Surgelé,1,Portions,Buanderie,2026-01-03,Préemballage
-Haut cuisse poulet cuite,Plat cuisiné,1,Portions,Cuisine,2026-01-03,Tupperware
-Magret de canard,Surgelé,1,Portions,Buanderie,2026-01-03 13:49:16,Sachet
-"Penne au poulet doré, poireaux et gouda",Plat cuisiné,1,Portions,Cuisine,2026-01-07 19:02:46,Couvercle vert
-Nouilles sautées au bœuf,Plat cuisiné,2,Portions,Buanderie,2026-01-08 06:51:42,Grand bleu
+Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
+Essai,Plat cuisiné,Petit bleu,Cuisine,4,Pièces,2026-01-21 20:37:55
+Riz cantonais (formule express),Surgelé,Préemballage,Buanderie,2,Portions,2026-01-21 17:14:23
+Blanquette sans riz,Plat cuisiné,Plastique blanc,Cuisine,2,Portions,2026-01-14 07:27:11
+Blanquette de veau,Plat cuisiné,Petit bleu,Cuisine,1,Portions,2026-01-14 07:26:35
+Pain,Autre,Sac réutilisable bleu,Cuisine,4,Portions,2026-01-10 19:51:45
+Plateau de mini pizzas,Surgelé,Plateau rectangulaire,Buanderie,1,Portions,2026-01-10 19:10:10
+Linguine chorizo,Plat cuisiné,Pyrex,Cuisine,1,Portions,2026-01-10 14:47:56
+Curry rouge de dinde - Riz,Plat cuisiné,Moyen bleu,Cuisine,2,Portions,2026-01-09 18:25:59
+Bun’s Bolognaise x4,Surgelé,Préemballage,Buanderie,1,Portions,2026-01-09 17:52:43
+Bun’s Jambon ketchup x4,Surgelé,Préemballage,Buanderie,2,Portions,2026-01-09 17:52:21
+Foie gras cru,Plat cuisiné,Autre,Buanderie,2,Portions,26/12/2025 14:40:34
+Portion de colin panée,Surgelé,Préemballage,Cuisine,2,Portions,26/12/2025 17:52:06
+Brocolis (kg),Surgelé,Préemballage,Buanderie,1,Portions,26/12/2025 18:08:11
+Raclette fumée (parts),Surgelé,Préemballage,Buanderie,3,Portions,26/12/2025 18:10:02
+Raclette (parts),Surgelé,Plastique blanc,Buanderie,1,Portions,26/12/2025 18:10:19
+Brioche,Surgelé,Préemballage,Cuisine,1,Portions,26/12/2025 18:13:42
+Filet de saumon,Surgelé,Préemballage,Cuisine,2,Portions,26/12/2025 18:15:38
+Filet de cabillaud,Surgelé,Préemballage,Cuisine,2,Portions,26/12/2025 18:17:18
+Courge en cubes (parts),Surgelé,Sachet,Buanderie,3,Portions,26/08/2025 18:21:02
+Morceau de baguette,Surgelé,Sachet,Cuisine,7,Portions,26/12/2025 18:21:29
+3 knacks et 1 saucisse fumée,Surgelé,Sachet,Cuisine,1,Portions,26/12/2025 18:21:55
+Saumon fumé x5 tranches,Autre,Pyrex,Buanderie,2,Portions,2025-12-29
+Bûche Nadège,Autre,Pyrex,Buanderie,6,Portions,2025-12-29
+Frites (parts),Surgelé,Préemballage,Buanderie,3,Portions,2026-01-03
+Riz à la cantonaise,Surgelé,Préemballage,Buanderie,1,Portions,2026-01-03
+8 brochettes de poulet thaï,Surgelé,Préemballage,Buanderie,1,Portions,2026-01-03
+12 yakitori,Surgelé,Préemballage,Buanderie,1,Portions,2026-01-03
+Haut cuisse poulet cuite,Plat cuisiné,Tupperware,Cuisine,1,Portions,2026-01-03
+Magret de canard,Surgelé,Sachet,Buanderie,1,Portions,2026-01-03 13:49:16
+"Penne au poulet doré, poireaux et gouda",Plat cuisiné,Couvercle vert,Cuisine,1,Portions,2026-01-07 19:02:46
+Nouilles sautées au bœuf,Plat cuisiné,Grand bleu,Buanderie,2,Portions,2026-01-08 06:51:42
