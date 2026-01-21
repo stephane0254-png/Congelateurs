@@ -52,7 +52,6 @@ def load_data():
     if os.path.exists(FILE_CSV):
         try:
             temp_df = pd.read_csv(FILE_CSV).fillna("")
-            # Mise à jour auto si la colonne Unité manque
             if "Unité" not in temp_df.columns: temp_df["Unité"] = "Portions"
             temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
             for c in cols:
@@ -64,13 +63,11 @@ def load_data():
 
 df = load_data()
 
-# Chargement Contenants
 if os.path.exists(FILE_CONTENANTS):
     df_cont = pd.read_csv(FILE_CONTENANTS)
 else:
     df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
-# Chargement Lieux
 if os.path.exists(FILE_LIEUX):
     df_lieux = pd.read_csv(FILE_LIEUX)
 else:
@@ -99,15 +96,13 @@ tab1, tab_recap, tab_lieux, tab2 = st.tabs(["📦 Stock", "📋 Récapitulatif",
 
 with tab1:
     LOGOS = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
-    UNITES = ["Portions", "Grammes", "Pièces"]
+    UNITES = ["Portions", "kg", "Pièces"]
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
             n = st.text_input("Nom")
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
-            
-            # Utilisation de la liste des lieux dynamique
             liste_lieux_form = sorted(df_lieux["Nom"].tolist())
             loc_a = c2.selectbox("Lieu", liste_lieux_form)
             
@@ -124,7 +119,6 @@ with tab1:
                 st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
-    # Filtres
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
     if "search_val" not in st.session_state: st.session_state.search_val = ""
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
@@ -136,7 +130,6 @@ with tab1:
 
     f1, f2 = st.columns(2)
     f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val")
-    # Filtre lieu dynamique
     f_loc = f2.selectbox("Filtrer par lieu", ["Tous"] + sorted(df_lieux["Nom"].tolist()), key="loc_val")
 
     working_df = df.copy()
@@ -184,7 +177,6 @@ with tab1:
                         df.at[orig_idx, 'Nombre'] -= 1
                         update_stock(df, "Moins")
                 
-                # Affichage Nombre + Unité
                 unite_display = row['Unité'] if 'Unité' in row else ""
                 col2.markdown(f"<div class='qty-text'>{row['Nombre']} <small>{unite_display}</small></div>", unsafe_allow_html=True)
                 
@@ -205,54 +197,42 @@ with tab_recap:
         st.warning("Veuillez créer un lieu dans l'onglet 'Lieux' d'abord.")
     else:
         lieu_recap = st.radio("Choisir le lieu :", liste_lieux_recap, horizontal=True, key="radio_recap")
-        
         recap_df = df.copy()
         if not recap_df.empty:
             recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
             recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
-            
             if not recap_df.empty:
                 now = datetime.now()
                 nb_rouge = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 180)])
                 nb_orange = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 90) & ((now - recap_df['Date_dt']).dt.days < 180)])
-                
                 if nb_rouge > 0 or nb_orange > 0:
-                    msg = []
-                    if nb_rouge > 0: msg.append(f"🔴 **{nb_rouge}** produit(s) de +6 mois")
-                    if nb_orange > 0: msg.append(f"🟠 **{nb_orange}** produit(s) de +3 mois")
-                    st.markdown(f"<div class='stats-box'>⚠️ À consommer en priorité : {' / '.join(msg)}</div>", unsafe_allow_html=True)
+                    msg = [f"🔴 **{nb_rouge}** de +6 mois" if nb_rouge > 0 else "", f"🟠 **{nb_orange}** de +3 mois" if nb_orange > 0 else ""]
+                    st.markdown(f"<div class='stats-box'>⚠️ À consommer : {' / '.join(filter(None, msg))}</div>", unsafe_allow_html=True)
 
             recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
-            if recap_df.empty:
-                st.info(f"Le congélateur {lieu_recap} est vide.")
+            if recap_df.empty: st.info(f"Le congélateur {lieu_recap} est vide.")
             else:
                 for _, row in recap_df.iterrows():
                     icon = "⚪"
                     if pd.notna(row['Date_dt']):
                         diff = (datetime.now() - row['Date_dt']).days
-                        if diff >= 180: icon = "🔴"
-                        elif diff >= 90: icon = "🟠"
+                        icon = "🔴" if diff >= 180 else "🟠" if diff >= 90 else "⚪"
                         date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
-                    else:
-                        date_display = f"(Date: {row['Date']})" if row['Date'] else "(Pas de date)"
-                    
-                    unite_txt = row['Unité'] if 'Unité' in row else ""
-                    st.text(f"{icon} {row['Nom']} - {row['Nombre']} {unite_txt} {date_display}")
-        else:
-            st.info("Le stock est vide.")
+                    else: date_display = "(Pas de date)"
+                    st.text(f"{icon} {row['Nom']} - {row['Nombre']} {row.get('Unité', '')} {date_display}")
+        else: st.info("Le stock est vide.")
 
-# --- ONGLET LIEUX (NOUVEAU) ---
+# --- ONGLET LIEUX ---
 with tab_lieux:
     st.subheader("📍 Gestion des Lieux")
     with st.form("conf_lieux", clear_on_submit=True):
-        new_l = st.text_input("Ajouter un lieu (ex: Cellier, Garage)")
+        new_l = st.text_input("Ajouter un lieu")
         if st.form_submit_button("Valider"):
             if new_l and new_l not in df_lieux["Nom"].values:
                 df_lieux = pd.concat([df_lieux, pd.DataFrame([{"Nom": new_l}])], ignore_index=True)
                 df_lieux.to_csv(FILE_LIEUX, index=False)
                 save_to_github(FILE_LIEUX, "Nouveau lieu")
                 st.rerun()
-    
     for i, r in df_lieux.sort_values("Nom").iterrows():
         c_n, c_d = st.columns([4, 1])
         c_n.write(f"• {r['Nom']}")
@@ -273,7 +253,6 @@ with tab2:
                 df_cont.to_csv(FILE_CONTENANTS, index=False)
                 save_to_github(FILE_CONTENANTS, "Nouveau contenant")
                 st.rerun()
-    
     for i, r in df_cont.sort_values("Nom").iterrows():
         c_n, c_d = st.columns([4, 1])
         c_n.write(f"• {r['Nom']}")
