@@ -11,15 +11,12 @@ st.set_page_config(page_title="Gestion des stocks", layout="wide")
 # --- CSS ---
 st.markdown("""
     <style>
-    /* Supprime l'espace vide excessif en haut de Streamlit */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
-    
-    /* Style du titre pour qu'il ne soit plus jamais tronqué */
     .main-title {
         font-size: 2.2rem !important;
         font-weight: bold;
@@ -27,9 +24,8 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 10px;
-        line-height: 1.4 !important; /* Donne de l'air au texte */
+        line-height: 1.4 !important;
     }
-    
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
     .qty-text {
         text-align: center; font-weight: bold; font-size: 1.2rem;
@@ -51,6 +47,7 @@ REPO_NAME = st.secrets["REPO_NAME"]
 FILE_CSV = "stock_congelateur.csv"
 FILE_CONTENANTS = "contenants.csv"
 FILE_LIEUX = "lieux.csv"
+FILE_CATS = "categories.csv"
 
 def save_to_github(file_path, commit_message):
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
@@ -81,15 +78,23 @@ def load_data():
 
 df = load_data()
 
+# Chargement Contenants
 if os.path.exists(FILE_CONTENANTS):
     df_cont = pd.read_csv(FILE_CONTENANTS)
 else:
     df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
 
+# Chargement Lieux
 if os.path.exists(FILE_LIEUX):
     df_lieux = pd.read_csv(FILE_LIEUX)
 else:
     df_lieux = pd.DataFrame({"Nom": ["Cuisine", "Buanderie"]})
+
+# Chargement Catégories
+if os.path.exists(FILE_CATS):
+    df_cats = pd.read_csv(FILE_CATS)
+else:
+    df_cats = pd.DataFrame({"Nom": ["Plat cuisiné", "Surgelé", "Autre"]})
 
 # --- FONCTIONS ---
 def update_stock(new_df, msg):
@@ -105,23 +110,23 @@ def reset_filters():
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
-# Titre avec icône meuble à tiroirs 🗄️
 st.markdown('<div class="main-title">🗄️ Gestion des stocks</div>', unsafe_allow_html=True)
 
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
 
-tab1, tab_recap, tab_lieux, tab2 = st.tabs(["📦 Stock", "📋 Récapitulatif", "📍 Lieux", "⚙️ Contenants"])
+tab1, tab_recap, tab_lieux, tab_cats, tab_cont = st.tabs(["📦 Stock", "📋 Récapitulatif", "📍 Lieux", "🏷️ Catégories", "⚙️ Contenants"])
 
 with tab1:
-    LOGOS = {"Plat cuisiné": "🍲", "Surgelé": "❄️", "Autre": "📦"}
     UNITES = ["Portions", "kg", "Pièces"]
+    liste_categories = sorted(df_cats["Nom"].tolist())
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
             n = st.text_input("Nom")
             c1, c2 = st.columns(2)
-            cat_a = c1.selectbox("Catégorie", ["Plat cuisiné", "Surgelé", "Autre"])
+            # Utilisation de la liste dynamique des catégories
+            cat_a = c1.selectbox("Catégorie", liste_categories)
             liste_lieux_form = sorted(df_lieux["Nom"].tolist())
             loc_a = c2.selectbox("Lieu", liste_lieux_form)
             
@@ -138,6 +143,7 @@ with tab1:
                 st.session_state.last_added_id = f"{n}_{ts}"
                 update_stock(df, f"Ajout {n}")
 
+    # Filtres
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
     if "search_val" not in st.session_state: st.session_state.search_val = ""
     search = c_s.text_input("🔍 Rechercher", key="search_val", label_visibility="collapsed")
@@ -148,7 +154,7 @@ with tab1:
     c_reset.button("🔄", on_click=reset_filters)
 
     f1, f2 = st.columns(2)
-    f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes", "Plat cuisiné", "Surgelé", "Autre"], key="cat_val")
+    f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes"] + liste_categories, key="cat_val")
     f_loc = f2.selectbox("Filtrer par lieu", ["Tous"] + sorted(df_lieux["Nom"].tolist()), key="loc_val")
 
     working_df = df.copy()
@@ -188,7 +194,7 @@ with tab1:
                 if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
                 
                 st.subheader(row['Nom'])
-                st.caption(f"{LOGOS.get(row['Catégorie'], '📦')} {row['Catégorie']} | 📦 {row['Contenant']}")
+                st.caption(f"🏷️ {row['Catégorie']} | 📦 {row['Contenant']}")
                 
                 col1, col2, col3, col4 = st.columns([1, 1.5, 1, 2])
                 if col1.button("➖", key=f"min_{orig_idx}"):
@@ -261,8 +267,28 @@ with tab_lieux:
             save_to_github(FILE_LIEUX, "Suppr lieu")
             st.rerun()
 
+# --- ONGLET CATÉGORIES (NOUVEAU) ---
+with tab_cats:
+    st.subheader("🏷️ Gestion des Catégories")
+    with st.form("conf_cats", clear_on_submit=True):
+        new_cat = st.text_input("Ajouter une catégorie (ex: Viande, Dessert)")
+        if st.form_submit_button("Valider"):
+            if new_cat and new_cat not in df_cats["Nom"].values:
+                df_cats = pd.concat([df_cats, pd.DataFrame([{"Nom": new_cat}])], ignore_index=True)
+                df_cats.to_csv(FILE_CATS, index=False)
+                save_to_github(FILE_CATS, "Nouvelle catégorie")
+                st.rerun()
+    for i, r in df_cats.sort_values("Nom").iterrows():
+        c_n, c_d = st.columns([4, 1])
+        c_n.write(f"• {r['Nom']}")
+        if c_d.button("🗑️", key=f"del_cat_{i}"):
+            df_cats = df_cats.drop(i).reset_index(drop=True)
+            df_cats.to_csv(FILE_CATS, index=False)
+            save_to_github(FILE_CATS, "Suppr catégorie")
+            st.rerun()
+
 # --- CONFIGURATION CONTENANTS ---
-with tab2:
+with tab_cont:
     st.subheader("🛠️ Configuration des Contenants")
     with st.form("conf_cont", clear_on_submit=True):
         new_c = st.text_input("Ajouter un contenant")
