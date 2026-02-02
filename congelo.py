@@ -102,6 +102,11 @@ def update_stock(new_df, msg):
     save_to_github(FILE_CSV, msg)
     st.rerun()
 
+def update_generic_file(new_df, file_path, msg):
+    new_df.to_csv(file_path, index=False)
+    save_to_github(file_path, msg)
+    st.rerun()
+
 def reset_filters():
     st.session_state.search_val = ""
     st.session_state.cat_val = "Toutes"
@@ -125,7 +130,6 @@ with tab1:
         with st.form("ajout", clear_on_submit=True):
             n = st.text_input("Nom")
             c1, c2 = st.columns(2)
-            # Utilisation de la liste dynamique des catégories
             cat_a = c1.selectbox("Catégorie", liste_categories)
             liste_lieux_form = sorted(df_lieux["Nom"].tolist())
             loc_a = c2.selectbox("Lieu", liste_lieux_form)
@@ -189,9 +193,26 @@ with tab1:
 
             with st.container(border=True):
                 st.markdown(f'<div style="height: 5px; background-color: {status_color}; border-radius: 5px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
-                c_top1, c_top2 = st.columns([1, 1])
+                c_top1, c_top2, c_top3 = st.columns([2, 1, 1])
                 c_top1.caption(f"📍 {row['Lieu']}")
-                if is_new: c_top2.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
+                
+                # --- MODIFICATION PRODUIT ---
+                with c_top2.popover("📝 Éditer"):
+                    with st.form(f"edit_prod_{orig_idx}"):
+                        new_n = st.text_input("Nom", value=row['Nom'])
+                        new_c = st.selectbox("Catégorie", liste_categories, index=liste_categories.index(row['Catégorie']) if row['Catégorie'] in liste_categories else 0)
+                        new_l = st.selectbox("Lieu", sorted(df_lieux["Nom"].tolist()), index=sorted(df_lieux["Nom"].tolist()).index(row['Lieu']) if row['Lieu'] in df_lieux["Nom"].values else 0)
+                        new_cont = st.selectbox("Contenant", sorted(df_cont["Nom"].tolist()), index=sorted(df_cont["Nom"].tolist()).index(row['Contenant']) if row['Contenant'] in df_cont["Nom"].values else 0)
+                        new_u = st.selectbox("Unité", UNITES, index=UNITES.index(row['Unité']) if row['Unité'] in UNITES else 0)
+                        if st.form_submit_button("Enregistrer"):
+                            df.at[orig_idx, 'Nom'] = new_n
+                            df.at[orig_idx, 'Catégorie'] = new_c
+                            df.at[orig_idx, 'Lieu'] = new_l
+                            df.at[orig_idx, 'Contenant'] = new_cont
+                            df.at[orig_idx, 'Unité'] = new_u
+                            update_stock(df, f"Modif {new_n}")
+
+                if is_new: c_top3.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
                 
                 st.subheader(row['Nom'])
                 st.caption(f"🏷️ {row['Catégorie']} | 📦 {row['Contenant']}")
@@ -255,19 +276,27 @@ with tab_lieux:
         if st.form_submit_button("Valider"):
             if new_l and new_l not in df_lieux["Nom"].values:
                 df_lieux = pd.concat([df_lieux, pd.DataFrame([{"Nom": new_l}])], ignore_index=True)
-                df_lieux.to_csv(FILE_LIEUX, index=False)
-                save_to_github(FILE_LIEUX, "Nouveau lieu")
-                st.rerun()
+                update_generic_file(df_lieux, FILE_LIEUX, "Nouveau lieu")
+
     for i, r in df_lieux.sort_values("Nom").iterrows():
-        c_n, c_d = st.columns([4, 1])
+        c_n, c_e, c_d = st.columns([3, 1, 1])
         c_n.write(f"• {r['Nom']}")
+        with c_e.popover("✏️"):
+            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_loc_input_{i}")
+            if st.button("OK", key=f"btn_loc_{i}"):
+                old_name = r['Nom']
+                df_lieux.at[i, 'Nom'] = new_name
+                df_lieux.to_csv(FILE_LIEUX, index=False)
+                # Mise à jour du stock impacté
+                df.loc[df['Lieu'] == old_name, 'Lieu'] = new_name
+                df.to_csv(FILE_CSV, index=False)
+                save_to_github(FILE_CSV, f"Update lieu {old_name}->{new_name}")
+                update_generic_file(df_lieux, FILE_LIEUX, f"Rename lieu {old_name}")
         if c_d.button("🗑️", key=f"del_loc_{i}"):
             df_lieux = df_lieux.drop(i).reset_index(drop=True)
-            df_lieux.to_csv(FILE_LIEUX, index=False)
-            save_to_github(FILE_LIEUX, "Suppr lieu")
-            st.rerun()
+            update_generic_file(df_lieux, FILE_LIEUX, "Suppr lieu")
 
-# --- ONGLET CATÉGORIES (NOUVEAU) ---
+# --- ONGLET CATÉGORIES ---
 with tab_cats:
     st.subheader("🏷️ Gestion des Catégories")
     with st.form("conf_cats", clear_on_submit=True):
@@ -275,17 +304,25 @@ with tab_cats:
         if st.form_submit_button("Valider"):
             if new_cat and new_cat not in df_cats["Nom"].values:
                 df_cats = pd.concat([df_cats, pd.DataFrame([{"Nom": new_cat}])], ignore_index=True)
-                df_cats.to_csv(FILE_CATS, index=False)
-                save_to_github(FILE_CATS, "Nouvelle catégorie")
-                st.rerun()
+                update_generic_file(df_cats, FILE_CATS, "Nouvelle catégorie")
+
     for i, r in df_cats.sort_values("Nom").iterrows():
-        c_n, c_d = st.columns([4, 1])
+        c_n, c_e, c_d = st.columns([3, 1, 1])
         c_n.write(f"• {r['Nom']}")
+        with c_e.popover("✏️"):
+            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_cat_input_{i}")
+            if st.button("OK", key=f"btn_cat_{i}"):
+                old_name = r['Nom']
+                df_cats.at[i, 'Nom'] = new_name
+                df_cats.to_csv(FILE_CATS, index=False)
+                # Mise à jour du stock impacté
+                df.loc[df['Catégorie'] == old_name, 'Catégorie'] = new_name
+                df.to_csv(FILE_CSV, index=False)
+                save_to_github(FILE_CSV, f"Update cat {old_name}->{new_name}")
+                update_generic_file(df_cats, FILE_CATS, f"Rename cat {old_name}")
         if c_d.button("🗑️", key=f"del_cat_{i}"):
             df_cats = df_cats.drop(i).reset_index(drop=True)
-            df_cats.to_csv(FILE_CATS, index=False)
-            save_to_github(FILE_CATS, "Suppr catégorie")
-            st.rerun()
+            update_generic_file(df_cats, FILE_CATS, "Suppr catégorie")
 
 # --- CONFIGURATION CONTENANTS ---
 with tab_cont:
@@ -295,14 +332,22 @@ with tab_cont:
         if st.form_submit_button("Valider"):
             if new_c and new_c not in df_cont["Nom"].values:
                 df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": new_c}])], ignore_index=True)
-                df_cont.to_csv(FILE_CONTENANTS, index=False)
-                save_to_github(FILE_CONTENANTS, "Nouveau contenant")
-                st.rerun()
+                update_generic_file(df_cont, FILE_CONTENANTS, "Nouveau contenant")
+
     for i, r in df_cont.sort_values("Nom").iterrows():
-        c_n, c_d = st.columns([4, 1])
+        c_n, c_e, c_d = st.columns([3, 1, 1])
         c_n.write(f"• {r['Nom']}")
+        with c_e.popover("✏️"):
+            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_cont_input_{i}")
+            if st.button("OK", key=f"btn_cont_{i}"):
+                old_name = r['Nom']
+                df_cont.at[i, 'Nom'] = new_name
+                df_cont.to_csv(FILE_CONTENANTS, index=False)
+                # Mise à jour du stock impacté
+                df.loc[df['Contenant'] == old_name, 'Contenant'] = new_name
+                df.to_csv(FILE_CSV, index=False)
+                save_to_github(FILE_CSV, f"Update cont {old_name}->{new_name}")
+                update_generic_file(df_cont, FILE_CONTENANTS, f"Rename cont {old_name}")
         if c_d.button("🗑️", key=f"del_cont_{i}"):
             df_cont = df_cont.drop(i).reset_index(drop=True)
-            df_cont.to_csv(FILE_CONTENANTS, index=False)
-            save_to_github(FILE_CONTENANTS, "Suppr contenant")
-            st.rerun()
+            update_generic_file(df_cont, FILE_CONTENANTS, "Suppr contenant")
