@@ -1,34 +1,33 @@
-Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
-Baguette,Autre,Couvercle rouge,Buanderie,1,Portions,2026-02-19 06:53:25
-Poulet teriyaki,Plat cuisiné,Grand bleu,Cuisine,2,Portions,2026-02-14 10:01:43
-Paupiettes de veau,Surgelé,Sachet,Buanderie,6,Pièces,2026-02-14 10:01:08
-Cuisse de canard,Surgelé,Sachet,Buanderie,3,Pièces,2026-02-14 10:00:46
-Entrecôte,Surgelé,Sachet,Cuisine,1,Pièces,2026-02-14 10:00:21
-Tajine d’agneau,Surgelé,Pyrex,Buanderie,4,Portions,2026-02-14 09:59:49
-Viande hachée,Surgelé,Tupperware,Cuisine,2,Portions,2026-02-14 09:59:25
-Gratins de légumes,Surgelé,Préemballage,Buanderie,2,Pièces,2026-02-14 09:58:29
-Pommes de terre à la sarladaise,Surgelé,Préemballage,Buanderie,1,Pièces,2026-02-14 09:58:05
-Rigatoni pesto (végétarien),Plat cuisiné,Moyen bleu,Buanderie,1,Portions,2026-02-08 12:10:35
-Chipotle Bowl porc semoule ,Plat cuisiné,Couvercle rouge,Buanderie,1,Portions,2026-02-08 12:09:49
-Poulet à la crème de poireau ,Plat cuisiné,Moyen bleu,Cuisine,1,Portions,2026-02-05 18:13:47
-Galettes chèvre lardon oignon,Surgelé,Préemballage,Cuisine,2,Portions,2026-02-03 17:15:05
-Bœuf carottes,Plat cuisiné,Verre Carré,Cuisine,1,Portions,2026-02-03 17:13:55
-Bœuf carottes,Plat cuisiné,Petit bleu,Cuisine,1,Portions,2026-02-03 17:13:15
-Lieu pané sauce pesto,Plat cuisiné,Couvercle vert,Cuisine,1,Portions,2026-02-03 17:12:49
-Sauce boeuf carotte,Autre,Plastique blanc,Cuisine,1,Portions,2026-02-01 18:44:15
-Taquitos porc haché,Plat cuisiné,Couvercle rouge,Cuisine,1,Portions,2026-01-31 15:38:33
-Baguette,Autre,Sac réutilisable vert,Cuisine,12,Portions,2026-01-31 13:31:00
-Pâté en croûte,Plat cuisiné,Sachet,Cuisine,3,Portions,2026-01-31 09:08:07
-Poêlée fermière,Surgelé,Préemballage,Buanderie,1,Pièces,2026-01-24 19:14:05
-Jardinière quinoa,Surgelé,Préemballage,Buanderie,1,Pièces,2026-01-24 19:13:43
-Riz cantonais (formule express),Surgelé,Préemballage,Buanderie,1,Portions,2026-01-21 17:14:23
-Blanquette sans riz,Plat cuisiné,Plastique blanc,Cuisine,2,Portions,2026-01-14 07:27:11
-Blanquette de veau,Plat cuisiné,Petit bleu,Cuisine,1,Portions,2026-01-14 07:26:35
-Bun’s Jambon ketchup x4,Surgelé,Préemballage,Buanderie,1,Portions,2026-01-09 17:52:21
-Foie gras cru,Plat cuisiné,Autre,Buanderie,2,Portions,26/12/2025 14:40:34
-Brioche,Surgelé,Préemballage,Cuisine,1,Portions,26/12/2025 18:13:42
-Filet de cabillaud,Surgelé,Préemballage,Cuisine,2,Portions,26/12/2025 18:17:18
-Courge en cubes (parts),Surgelé,Sachet,Buanderie,2,Portions,26/08/2025 18:21:02
-3 knacks et 1 saucisse fumée,Surgelé,Sachet,Cuisine,1,Portions,26/12/2025 18:21:55
-Saumon fumé x5 tranches,Autre,Pyrex,Buanderie,2,Portions,2025-12-29
-Bûche Nadège,Autre,Pyrex,Buanderie,6,Portions,2025-12-29
+Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
+Poulet teriyaki,Plat cuisiné,2,Portions,Cuisine,2026-02-14 10:01:43,Grand bleu
+Paupiettes de veau,Surgelé,6,Pièces,Buanderie,2026-02-14 10:01:08,Sachet
+Cuisse de canard,Surgelé,3,Pièces,Buanderie,2026-02-14 10:00:46,Sachet
+Entrecôte,Surgelé,1,Pièces,Cuisine,2026-02-14 10:00:21,Sachet
+Tajine d’agneau,Surgelé,4,Portions,Buanderie,2026-02-14 09:59:49,Pyrex
+Viande hachée,Surgelé,2,Portions,Cuisine,2026-02-14 09:59:25,Tupperware
+Gratins de légumes,Surgelé,2,Pièces,Buanderie,2026-02-14 09:58:29,Préemballage
+Pommes de terre à la sarladaise,Surgelé,1,Pièces,Buanderie,2026-02-14 09:58:05,Préemballage
+Rigatoni pesto (végétarien),Plat cuisiné,1,Portions,Buanderie,2026-02-08 12:10:35,Moyen bleu
+Chipotle Bowl porc semoule ,Plat cuisiné,1,Portions,Buanderie,2026-02-08 12:09:49,Couvercle rouge
+Poulet à la crème de poireau ,Plat cuisiné,1,Portions,Cuisine,2026-02-05 18:13:47,Moyen bleu
+Galettes chèvre lardon oignon,Surgelé,2,Portions,Cuisine,2026-02-03 17:15:05,Préemballage
+Bœuf carottes,Plat cuisiné,1,Portions,Cuisine,2026-02-03 17:13:55,Verre Carré
+Bœuf carottes,Plat cuisiné,1,Portions,Cuisine,2026-02-03 17:13:15,Petit bleu
+Lieu pané sauce pesto,Plat cuisiné,1,Portions,Cuisine,2026-02-03 17:12:49,Couvercle vert
+Sauce boeuf carotte,Autre,1,Portions,Cuisine,2026-02-01 18:44:15,Plastique blanc
+Taquitos porc haché,Plat cuisiné,1,Portions,Cuisine,2026-01-31 15:38:33,Couvercle rouge
+Baguette,Autre,12,Portions,Cuisine,2026-01-31 13:31:00,Sac réutilisable vert
+Pâté en croûte,Plat cuisiné,3,Portions,Cuisine,2026-01-31 09:08:07,Sachet
+Poêlée fermière,Surgelé,1,Pièces,Buanderie,2026-01-24 19:14:05,Préemballage
+Jardinière quinoa,Surgelé,1,Pièces,Buanderie,2026-01-24 19:13:43,Préemballage
+Riz cantonais (formule express),Surgelé,1,Portions,Buanderie,2026-01-21 17:14:23,Préemballage
+Blanquette sans riz,Plat cuisiné,2,Portions,Cuisine,2026-01-14 07:27:11,Plastique blanc
+Blanquette de veau,Plat cuisiné,1,Portions,Cuisine,2026-01-14 07:26:35,Petit bleu
+Bun’s Jambon ketchup x4,Surgelé,1,Portions,Buanderie,2026-01-09 17:52:21,Préemballage
+Foie gras cru,Plat cuisiné,2,Portions,Buanderie,26/12/2025 14:40:34,Autre
+Brioche,Surgelé,1,Portions,Cuisine,26/12/2025 18:13:42,Préemballage
+Filet de cabillaud,Surgelé,2,Portions,Cuisine,26/12/2025 18:17:18,Préemballage
+Courge en cubes (parts),Surgelé,2,Portions,Buanderie,26/08/2025 18:21:02,Sachet
+3 knacks et 1 saucisse fumée,Surgelé,1,Portions,Cuisine,26/12/2025 18:21:55,Sachet
+Saumon fumé x5 tranches,Autre,2,Portions,Buanderie,2025-12-29,Pyrex
+Bûche Nadège,Autre,6,Portions,Buanderie,2025-12-29,Pyrex
