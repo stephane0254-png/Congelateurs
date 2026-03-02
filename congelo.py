@@ -4,28 +4,50 @@ from datetime import datetime
 from supabase import create_client, Client
 
 # Titre de l'onglet navigateur
-st.set_page_config(page_title="Gestion des stocks", layout="wide")
+st.set_page_config(page_title="Stock congélateurs", layout="wide")
 
 # --- CONNEXION SUPABASE ---
-# Assurez-vous d'avoir ajouté ces clés dans vos Streamlit Secrets
+# Ces clés doivent être dans vos Streamlit Secrets
 url: str = st.secrets["SUPABASE_URL"]
 key: str = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# --- CSS (Conserve votre style original) ---
+# --- CSS (Design original conservé) ---
 st.markdown("""
     <style>
-    .block-container { padding-top: 2rem !important; padding-bottom: 0rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
-    .main-title { font-size: 2.2rem !important; font-weight: bold; padding-bottom: 1rem; display: flex; align-items: center; gap: 10px; line-height: 1.4 !important; }
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .main-title {
+        font-size: 2.2rem !important;
+        font-weight: bold;
+        padding-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        line-height: 1.4 !important;
+    }
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
-    .qty-text { text-align: center; font-weight: bold; font-size: 1.2rem; background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px; }
-    [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) { border-left-width: 10px !important; }
-    .stats-box { padding: 10px; border-radius: 8px; background-color: #f0f2f6; margin-bottom: 20px; border: 1px solid #ddd; text-align: center; }
+    .qty-text {
+        text-align: center; font-weight: bold; font-size: 1.2rem;
+        background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) {
+        border-left-width: 10px !important;
+    }
+    .stats-box {
+        padding: 10px; border-radius: 8px; background-color: #f0f2f6;
+        margin-bottom: 20px; border: 1px solid #ddd; text-align: center;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CHARGEMENT DES DONNÉES DEPUIS SUPABASE ---
-def load_data():
+# --- FONCTIONS DE CHARGEMENT ---
+def load_stock():
+    # On récupère tout le stock (nom des colonnes en minuscules comme dans Supabase)
     res = supabase.table("stock").select("*").execute()
     df_raw = pd.DataFrame(res.data)
     if df_raw.empty:
@@ -35,10 +57,12 @@ def load_data():
 def load_simple_table(table_name):
     res = supabase.table(table_name).select("*").execute()
     df_raw = pd.DataFrame(res.data)
-    return df_raw if not df_raw.empty else pd.DataFrame({"nom": []})
+    if df_raw.empty:
+        return pd.DataFrame({"nom": []})
+    return df_raw
 
-# Chargement initial
-df = load_data()
+# Chargement des données au démarrage
+df = load_stock()
 df_cont = load_simple_table("contenants")
 df_lieux = load_simple_table("lieux")
 df_cats = load_simple_table("categories")
@@ -51,7 +75,7 @@ def reset_filters():
     st.session_state.last_added_id = None
 
 # --- INTERFACE ---
-st.markdown('<div class="main-title">🗄️ Gestion des stocks</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">🗄️ Stock congélateurs</div>', unsafe_allow_html=True)
 
 if 'sort_mode' not in st.session_state: st.session_state.sort_mode = "alpha"
 if 'last_added_id' not in st.session_state: st.session_state.last_added_id = None
@@ -108,6 +132,7 @@ with tab1:
         if f_cat != "Toutes": working_df = working_df[working_df['categorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['lieu'] == f_loc]
         
+        # Gestion du tri
         working_df['is_last'] = working_df['id'] == st.session_state.last_added_id
         if st.session_state.sort_mode == "alpha":
             working_df = working_df.sort_values(by=['is_last', 'nom'], ascending=[False, True])
@@ -153,7 +178,7 @@ with tab1:
                 
                 col1, col2, col3, col4 = st.columns([1, 1.5, 1, 2])
                 if col1.button("➖", key=f"min_{row['id']}"):
-                    if row['nombre'] > 1:
+                    if int(row['nombre']) > 1:
                         supabase.table("stock").update({"nombre": int(row['nombre']) - 1}).eq("id", row['id']).execute()
                         st.rerun()
                 
@@ -173,9 +198,9 @@ with tab_recap:
     st.subheader("📋 Liste par lieu")
     liste_lieux_recap = sorted(df_lieux["nom"].tolist()) if not df_lieux.empty else []
     if not liste_lieux_recap:
-        st.warning("Veuillez créer un lieu dans l'onglet 'Lieux' d'abord.")
+        st.warning("Créez un lieu dans l'onglet 'Lieux'.")
     else:
-        lieu_recap = st.radio("Choisir le lieu :", liste_lieux_recap, horizontal=True, key="radio_recap")
+        lieu_recap = st.radio("Lieu :", liste_lieux_recap, horizontal=True, key="radio_recap")
         recap_df = df.copy()
         if not recap_df.empty:
             recap_df = recap_df[recap_df['lieu'] == lieu_recap]
@@ -218,9 +243,8 @@ with tab_lieux:
         with c_e.popover("✏️"):
             new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_loc_input_{i}")
             if st.button("OK", key=f"btn_loc_{i}"):
-                old_name = r['nom']
-                supabase.table("lieux").update({"nom": new_name}).eq("nom", old_name).execute()
-                supabase.table("stock").update({"lieu": new_name}).eq("lieu", old_name).execute()
+                supabase.table("lieux").update({"nom": new_name}).eq("nom", r['nom']).execute()
+                supabase.table("stock").update({"lieu": new_name}).eq("lieu", r['nom']).execute()
                 st.rerun()
         if c_d.button("🗑️", key=f"del_loc_{i}"):
             supabase.table("lieux").delete().eq("nom", r['nom']).execute()
@@ -242,9 +266,8 @@ with tab_cats:
         with c_e.popover("✏️"):
             new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_cat_input_{i}")
             if st.button("OK", key=f"btn_cat_{i}"):
-                old_name = r['nom']
-                supabase.table("categories").update({"nom": new_name}).eq("nom", old_name).execute()
-                supabase.table("stock").update({"categorie": new_name}).eq("categorie", old_name).execute()
+                supabase.table("categories").update({"nom": new_name}).eq("nom", r['nom']).execute()
+                supabase.table("stock").update({"categorie": new_name}).eq("categorie", r['nom']).execute()
                 st.rerun()
         if c_d.button("🗑️", key=f"del_cat_{i}"):
             supabase.table("categories").delete().eq("nom", r['nom']).execute()
@@ -266,9 +289,8 @@ with tab_cont:
         with c_e.popover("✏️"):
             new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_cont_input_{i}")
             if st.button("OK", key=f"btn_cont_{i}"):
-                old_name = r['nom']
-                supabase.table("contenants").update({"nom": new_name}).eq("nom", old_name).execute()
-                supabase.table("stock").update({"contenant": new_name}).eq("contenant", old_name).execute()
+                supabase.table("contenants").update({"nom": new_name}).eq("nom", r['nom']).execute()
+                supabase.table("stock").update({"contenant": new_name}).eq("contenant", r['nom']).execute()
                 st.rerun()
         if c_d.button("🗑️", key=f"del_cont_{i}"):
             supabase.table("contenants").delete().eq("nom", r['nom']).execute()
