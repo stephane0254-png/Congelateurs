@@ -49,6 +49,24 @@ FILE_CONTENANTS = "contenants.csv"
 FILE_LIEUX = "lieux.csv"
 FILE_CATS = "categories.csv"
 
+# --- RÉCUPÉRATION INITIALE DEPUIS GITHUB ---
+# Cette fonction garantit que l'app lit les vraies données de GitHub au démarrage
+def get_github_content(file_path):
+    url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": f"application/vnd.github.v3+json"}
+    res = requests.get(url, headers=headers)
+    if res.status_code == 200:
+        content = base64.b64decode(res.json()["content"]).decode('utf-8')
+        with open(file_path, "w", encoding='utf-8') as f:
+            f.write(content)
+        return True
+    return False
+
+# On force la synchronisation au chargement de l'app si les fichiers n'existent pas localement
+for f_path in [FILE_CSV, FILE_CONTENANTS, FILE_LIEUX, FILE_CATS]:
+    if not os.path.exists(f_path):
+        get_github_content(f_path)
+
 def save_to_github(file_path, commit_message):
     url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": f"application/vnd.github.v3+json"}
@@ -66,7 +84,6 @@ def load_data():
     cols = ["Nom", "Catégorie", "Nombre", "Unité", "Lieu", "Date", "Contenant"]
     if os.path.exists(FILE_CSV):
         try:
-            # On charge en forçant le type string pour la date pour éviter les mauvaises interprétations initiales
             temp_df = pd.read_csv(FILE_CSV).fillna("")
             if "Unité" not in temp_df.columns: temp_df["Unité"] = "Portions"
             temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
@@ -142,7 +159,6 @@ with tab1:
             u_a = c5.selectbox("Unité", UNITES)
             
             if st.form_submit_button("Ajouter"):
-                # Format standard YYYY-MM-DD HH:MM:SS
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Unité": u_a, "Date": ts}])
                 df = pd.concat([new_row, df], ignore_index=True)
@@ -165,7 +181,6 @@ with tab1:
 
     working_df = df.copy()
     if not working_df.empty:
-        # CORRECTION ICI : Suppression de dayfirst=True pour laisser Pandas détecter le format YYYY-MM-DD
         working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
         
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
@@ -200,7 +215,6 @@ with tab1:
                 c_top1, c_top2, c_top3 = st.columns([2, 1, 1])
                 c_top1.caption(f"📍 {row['Lieu']}")
                 
-                # --- MODIFICATION PRODUIT ---
                 with c_top2.popover("📝 Éditer"):
                     with st.form(f"edit_prod_{orig_idx}"):
                         new_n = st.text_input("Nom", value=row['Nom'])
@@ -250,7 +264,6 @@ with tab_recap:
         recap_df = df.copy()
         if not recap_df.empty:
             recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
-            # CORRECTION ICI : Suppression de dayfirst=True
             recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
             
             if not recap_df.empty:
@@ -261,17 +274,17 @@ with tab_recap:
                     msg = [f"🔴 **{nb_rouge}** de +6 mois" if nb_rouge > 0 else "", f"🟠 **{nb_orange}** de +3 mois" if nb_orange > 0 else ""]
                     st.markdown(f"<div class='stats-box'>⚠️ À consommer : {' / '.join(filter(None, msg))}</div>", unsafe_allow_html=True)
 
-            recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
-            if recap_df.empty: st.info(f"Le lieu {lieu_recap} est vide.")
-            else:
-                for _, row in recap_df.iterrows():
-                    icon = "⚪"
-                    if pd.notna(row['Date_dt']):
-                        diff = (datetime.now() - row['Date_dt']).days
-                        icon = "🔴" if diff >= 180 else "🟠" if diff >= 90 else "⚪"
-                        date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
-                    else: date_display = "(Pas de date)"
-                    st.text(f"{icon} {row['Nom']} - {row['Nombre']} {row.get('Unité', '')} {date_display}")
+                recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
+                if recap_df.empty: st.info(f"Le lieu {lieu_recap} est vide.")
+                else:
+                    for _, row in recap_df.iterrows():
+                        icon = "⚪"
+                        if pd.notna(row['Date_dt']):
+                            diff = (datetime.now() - row['Date_dt']).days
+                            icon = "🔴" if diff >= 180 else "🟠" if diff >= 90 else "⚪"
+                            date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
+                        else: date_display = "(Pas de date)"
+                        st.text(f"{icon} {row['Nom']} - {row['Nombre']} {row.get('Unité', '')} {date_display}")
         else: st.info("Le stock est vide.")
 
 # --- ONGLET LIEUX ---
@@ -293,7 +306,6 @@ with tab_lieux:
                 old_name = r['Nom']
                 df_lieux.at[i, 'Nom'] = new_name
                 df_lieux.to_csv(FILE_LIEUX, index=False)
-                # Mise à jour du stock impacté
                 df.loc[df['Lieu'] == old_name, 'Lieu'] = new_name
                 df.to_csv(FILE_CSV, index=False)
                 save_to_github(FILE_CSV, f"Update lieu {old_name}->{new_name}")
@@ -321,7 +333,6 @@ with tab_cats:
                 old_name = r['Nom']
                 df_cats.at[i, 'Nom'] = new_name
                 df_cats.to_csv(FILE_CATS, index=False)
-                # Mise à jour du stock impacté
                 df.loc[df['Catégorie'] == old_name, 'Catégorie'] = new_name
                 df.to_csv(FILE_CSV, index=False)
                 save_to_github(FILE_CSV, f"Update cat {old_name}->{new_name}")
@@ -349,7 +360,6 @@ with tab_cont:
                 old_name = r['Nom']
                 df_cont.at[i, 'Nom'] = new_name
                 df_cont.to_csv(FILE_CONTENANTS, index=False)
-                # Mise à jour du stock impacté
                 df.loc[df['Contenant'] == old_name, 'Contenant'] = new_name
                 df.to_csv(FILE_CSV, index=False)
                 save_to_github(FILE_CSV, f"Update cont {old_name}->{new_name}")
