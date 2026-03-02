@@ -115,8 +115,8 @@ with tab1:
             status_color = "#ddd"
             if pd.notna(row['date_dt']):
                 diff = (now_naive - row['date_dt']).days
-                if diff >= 60: status_color = "#ff4b4b"
-                elif diff >= 30: status_color = "#ffa500"
+                if diff >= 180: status_color = "#ff4b4b"
+                elif diff >= 90: status_color = "#ffa500"
             if row['is_last']: status_color = "#2e7d32"
 
             with st.container(border=True):
