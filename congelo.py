@@ -160,11 +160,11 @@ with tab1:
                 
                 with c_top2.popover("📝 Éditer"):
                     with st.form(f"edit_prod_{row['id']}"):
-                        new_n = st.text_input("Nom", value=row['nom'])
-                        new_c = st.selectbox("Catégorie", liste_categories, index=liste_categories.index(row['categorie']) if row['categorie'] in liste_categories else 0)
-                        new_l = st.selectbox("Lieu", sorted(df_lieux["nom"].tolist()), index=sorted(df_lieux["nom"].tolist()).index(row['lieu']) if row['lieu'] in df_lieux["nom"].values else 0)
-                        new_cont = st.selectbox("Contenant", sorted(df_cont["nom"].tolist()), index=sorted(df_cont["nom"].tolist()).index(row['contenant']) if row['contenant'] in df_cont["nom"].values else 0)
-                        new_u = st.selectbox("Unité", UNITES, index=UNITES.index(row['unite']) if row['unite'] in UNITES else 0)
+                        new_n = st.text_input("nom", value=row['nom'])
+                        new_c = st.selectbox("categorie", liste_categories, index=liste_categories.index(row['categorie']) if row['categorie'] in liste_categories else 0)
+                        new_l = st.selectbox("lieu", sorted(df_lieux["nom"].tolist()), index=sorted(df_lieux["nom"].tolist()).index(row['lieu']) if row['lieu'] in df_lieux["nom"].values else 0)
+                        new_cont = st.selectbox("contenant", sorted(df_cont["nom"].tolist()), index=sorted(df_cont["nom"].tolist()).index(row['contenant']) if row['contenant'] in df_cont["nom"].values else 0)
+                        new_u = st.selectbox("unite", UNITES, index=UNITES.index(row['unite']) if row['unite'] in UNITES else 0)
                         if st.form_submit_button("Enregistrer"):
                             supabase.table("stock").update({
                                 "nom": new_n, "categorie": new_c, "lieu": new_l, "contenant": new_cont, "unite": new_u
