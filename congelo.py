@@ -66,6 +66,7 @@ def load_data():
     cols = ["Nom", "Catégorie", "Nombre", "Unité", "Lieu", "Date", "Contenant"]
     if os.path.exists(FILE_CSV):
         try:
+            # On charge en forçant le type string pour la date pour éviter les mauvaises interprétations initiales
             temp_df = pd.read_csv(FILE_CSV).fillna("")
             if "Unité" not in temp_df.columns: temp_df["Unité"] = "Portions"
             temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
@@ -141,6 +142,7 @@ with tab1:
             u_a = c5.selectbox("Unité", UNITES)
             
             if st.form_submit_button("Ajouter"):
+                # Format standard YYYY-MM-DD HH:MM:SS
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Unité": u_a, "Date": ts}])
                 df = pd.concat([new_row, df], ignore_index=True)
@@ -163,12 +165,14 @@ with tab1:
 
     working_df = df.copy()
     if not working_df.empty:
-        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce', dayfirst=True)
+        # CORRECTION ICI : Suppression de dayfirst=True pour laisser Pandas détecter le format YYYY-MM-DD
+        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
+        
         if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
         if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
         if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
         
-        working_df['is_last'] = (working_df['Nom'] + "_" + working_df['Date']) == st.session_state.last_added_id
+        working_df['is_last'] = (working_df['Nom'] + "_" + working_df['Date'].astype(str)) == st.session_state.last_added_id
         if st.session_state.sort_mode == "alpha":
             working_df = working_df.sort_values(by=['is_last', 'Nom'], ascending=[False, True])
         elif st.session_state.sort_mode == "oldest":
@@ -246,7 +250,9 @@ with tab_recap:
         recap_df = df.copy()
         if not recap_df.empty:
             recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
-            recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce', dayfirst=True)
+            # CORRECTION ICI : Suppression de dayfirst=True
+            recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
+            
             if not recap_df.empty:
                 now = datetime.now()
                 nb_rouge = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 180)])
