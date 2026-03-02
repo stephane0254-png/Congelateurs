@@ -1,112 +1,47 @@
 import streamlit as st
 import pandas as pd
-import os
-import base64
-import requests
 from datetime import datetime
+from supabase import create_client, Client
 
 # Titre de l'onglet navigateur
 st.set_page_config(page_title="Gestion des stocks", layout="wide")
 
-# --- CSS ---
+# --- CONNEXION SUPABASE ---
+# Assurez-vous d'avoir ajouté ces clés dans vos Streamlit Secrets
+url: str = st.secrets["SUPABASE_URL"]
+key: str = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
+
+# --- CSS (Conserve votre style original) ---
 st.markdown("""
     <style>
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-    .main-title {
-        font-size: 2.2rem !important;
-        font-weight: bold;
-        padding-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        line-height: 1.4 !important;
-    }
+    .block-container { padding-top: 2rem !important; padding-bottom: 0rem !important; padding-left: 1rem !important; padding-right: 1rem !important; }
+    .main-title { font-size: 2.2rem !important; font-weight: bold; padding-bottom: 1rem; display: flex; align-items: center; gap: 10px; line-height: 1.4 !important; }
     div.stButton > button { height: 35px !important; font-weight: bold !important; width: 100%; }
-    .qty-text {
-        text-align: center; font-weight: bold; font-size: 1.2rem;
-        background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px;
-    }
-    [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) {
-        border-left-width: 10px !important;
-    }
-    .stats-box {
-        padding: 10px; border-radius: 8px; background-color: #f0f2f6;
-        margin-bottom: 20px; border: 1px solid #ddd; text-align: center;
-    }
+    .qty-text { text-align: center; font-weight: bold; font-size: 1.2rem; background: #f0f2f6; border-radius: 4px; line-height: 35px; height: 35px; }
+    [data-testid="stVerticalBlockBorderWrapper"] > div:nth-child(1) { border-left-width: 10px !important; }
+    .stats-box { padding: 10px; border-radius: 8px; background-color: #f0f2f6; margin-bottom: 20px; border: 1px solid #ddd; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONFIG GITHUB ---
-GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
-REPO_NAME = st.secrets["REPO_NAME"]
-FILE_CSV = "stock_congelateur.csv"
-FILE_CONTENANTS = "contenants.csv"
-FILE_LIEUX = "lieux.csv"
-FILE_CATS = "categories.csv"
-
-def save_to_github(file_path, commit_message):
-    url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": f"application/vnd.github.v3+json"}
-    res = requests.get(url, headers=headers)
-    sha = res.json().get("sha") if res.status_code == 200 else None
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            content = base64.b64encode(f.read()).decode()
-        data = {"message": commit_message, "content": content}
-        if sha: data["sha"] = sha
-        requests.put(url, headers=headers, json=data)
-
-# --- CHARGEMENT DES DONNÉES ---
+# --- CHARGEMENT DES DONNÉES DEPUIS SUPABASE ---
 def load_data():
-    cols = ["Nom", "Catégorie", "Nombre", "Unité", "Lieu", "Date", "Contenant"]
-    if os.path.exists(FILE_CSV):
-        try:
-            # On charge en forçant le type string pour la date pour éviter les mauvaises interprétations initiales
-            temp_df = pd.read_csv(FILE_CSV).fillna("")
-            if "Unité" not in temp_df.columns: temp_df["Unité"] = "Portions"
-            temp_df.columns = [c.capitalize() if c.lower() != "catégorie" else "Catégorie" for c in temp_df.columns]
-            for c in cols:
-                if c not in temp_df.columns: temp_df[c] = ""
-            return temp_df[cols]
-        except:
-            return pd.DataFrame(columns=cols)
-    return pd.DataFrame(columns=cols)
+    res = supabase.table("stock").select("*").execute()
+    df_raw = pd.DataFrame(res.data)
+    if df_raw.empty:
+        return pd.DataFrame(columns=["id", "nom", "categorie", "nombre", "unite", "lieu", "date", "contenant"])
+    return df_raw
 
+def load_simple_table(table_name):
+    res = supabase.table(table_name).select("*").execute()
+    df_raw = pd.DataFrame(res.data)
+    return df_raw if not df_raw.empty else pd.DataFrame({"nom": []})
+
+# Chargement initial
 df = load_data()
-
-# Chargement Contenants
-if os.path.exists(FILE_CONTENANTS):
-    df_cont = pd.read_csv(FILE_CONTENANTS)
-else:
-    df_cont = pd.DataFrame({"Nom": ["Pyrex", "Tupperware", "Verre Carré"]})
-
-# Chargement Lieux
-if os.path.exists(FILE_LIEUX):
-    df_lieux = pd.read_csv(FILE_LIEUX)
-else:
-    df_lieux = pd.DataFrame({"Nom": ["Cuisine", "Buanderie"]})
-
-# Chargement Catégories
-if os.path.exists(FILE_CATS):
-    df_cats = pd.read_csv(FILE_CATS)
-else:
-    df_cats = pd.DataFrame({"Nom": ["Plat cuisiné", "Surgelé", "Autre"]})
-
-# --- FONCTIONS ---
-def update_stock(new_df, msg):
-    new_df.to_csv(FILE_CSV, index=False)
-    save_to_github(FILE_CSV, msg)
-    st.rerun()
-
-def update_generic_file(new_df, file_path, msg):
-    new_df.to_csv(file_path, index=False)
-    save_to_github(file_path, msg)
-    st.rerun()
+df_cont = load_simple_table("contenants")
+df_lieux = load_simple_table("lieux")
+df_cats = load_simple_table("categories")
 
 def reset_filters():
     st.session_state.search_val = ""
@@ -125,29 +60,32 @@ tab1, tab_recap, tab_lieux, tab_cats, tab_cont = st.tabs(["📦 Stock", "📋 R�
 
 with tab1:
     UNITES = ["Portions", "kg", "Pièces"]
-    liste_categories = sorted(df_cats["Nom"].tolist())
+    liste_categories = sorted(df_cats["nom"].tolist()) if not df_cats.empty else []
 
     with st.expander("➕ Nouveau produit"):
         with st.form("ajout", clear_on_submit=True):
             n = st.text_input("Nom")
             c1, c2 = st.columns(2)
             cat_a = c1.selectbox("Catégorie", liste_categories)
-            liste_lieux_form = sorted(df_lieux["Nom"].tolist())
+            liste_lieux_form = sorted(df_lieux["nom"].tolist()) if not df_lieux.empty else []
             loc_a = c2.selectbox("Lieu", liste_lieux_form)
             
             c3, c4, c5 = st.columns([2, 1, 2])
-            cont_list = sorted(df_cont["Nom"].tolist())
+            cont_list = sorted(df_cont["nom"].tolist()) if not df_cont.empty else []
             cont_a = c3.selectbox("Contenant", cont_list)
             q_a = c4.number_input("Qté", min_value=1, step=1)
             u_a = c5.selectbox("Unité", UNITES)
             
             if st.form_submit_button("Ajouter"):
-                # Format standard YYYY-MM-DD HH:MM:SS
                 ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_row = pd.DataFrame([{"Nom": n, "Catégorie": cat_a, "Contenant": cont_a, "Lieu": loc_a, "Nombre": int(q_a), "Unité": u_a, "Date": ts}])
-                df = pd.concat([new_row, df], ignore_index=True)
-                st.session_state.last_added_id = f"{n}_{ts}"
-                update_stock(df, f"Ajout {n}")
+                new_row = {
+                    "nom": n, "categorie": cat_a, "contenant": cont_a, 
+                    "lieu": loc_a, "nombre": int(q_a), "unite": u_a, "date": ts
+                }
+                res = supabase.table("stock").insert(new_row).execute()
+                if res.data:
+                    st.session_state.last_added_id = res.data[0]['id']
+                st.rerun()
 
     # Filtres
     c_s, c_sort, c_reset = st.columns([4, 1, 1])
@@ -161,36 +99,31 @@ with tab1:
 
     f1, f2 = st.columns(2)
     f_cat = f1.selectbox("Filtrer par catégorie", ["Toutes"] + liste_categories, key="cat_val")
-    f_loc = f2.selectbox("Filtrer par lieu", ["Tous"] + sorted(df_lieux["Nom"].tolist()), key="loc_val")
+    f_loc = f2.selectbox("Filtrer par lieu", ["Tous"] + sorted(df_lieux["nom"].tolist()), key="loc_val")
 
     working_df = df.copy()
     if not working_df.empty:
-        # CORRECTION ICI : Suppression de dayfirst=True pour laisser Pandas détecter le format YYYY-MM-DD
-        working_df['Date_dt'] = pd.to_datetime(working_df['Date'], errors='coerce')
+        working_df['date_dt'] = pd.to_datetime(working_df['date'], errors='coerce')
+        if search: working_df = working_df[working_df['nom'].str.contains(search, case=False)]
+        if f_cat != "Toutes": working_df = working_df[working_df['categorie'] == f_cat]
+        if f_loc != "Tous": working_df = working_df[working_df['lieu'] == f_loc]
         
-        if search: working_df = working_df[working_df['Nom'].str.contains(search, case=False)]
-        if f_cat != "Toutes": working_df = working_df[working_df['Catégorie'] == f_cat]
-        if f_loc != "Tous": working_df = working_df[working_df['Lieu'] == f_loc]
-        
-        working_df['is_last'] = (working_df['Nom'] + "_" + working_df['Date'].astype(str)) == st.session_state.last_added_id
+        working_df['is_last'] = working_df['id'] == st.session_state.last_added_id
         if st.session_state.sort_mode == "alpha":
-            working_df = working_df.sort_values(by=['is_last', 'Nom'], ascending=[False, True])
+            working_df = working_df.sort_values(by=['is_last', 'nom'], ascending=[False, True])
         elif st.session_state.sort_mode == "oldest":
-            working_df = working_df.sort_values(by=['is_last', 'Date_dt', 'Nom'], ascending=[False, True, True])
+            working_df = working_df.sort_values(by=['is_last', 'date_dt', 'nom'], ascending=[False, True, True])
         elif st.session_state.sort_mode == "newest":
-            working_df = working_df.sort_values(by=['is_last', 'Date_dt', 'Nom'], ascending=[False, False, True])
-        
-        working_df = working_df.reset_index()
+            working_df = working_df.sort_values(by=['is_last', 'date_dt', 'nom'], ascending=[False, False, True])
 
     if working_df.empty:
         st.info("Aucun produit trouvé.")
     else:
         for _, row in working_df.iterrows():
-            orig_idx = row['index']
             is_new = row['is_last']
             status_color = "#ddd"
-            if pd.notna(row['Date_dt']):
-                diff = (datetime.now() - row['Date_dt']).days
+            if pd.notna(row['date_dt']):
+                diff = (datetime.now() - row['date_dt']).days
                 if diff >= 180: status_color = "#ff4b4b"
                 elif diff >= 90: status_color = "#ffa500"
             if is_new: status_color = "#2e7d32"
@@ -198,80 +131,75 @@ with tab1:
             with st.container(border=True):
                 st.markdown(f'<div style="height: 5px; background-color: {status_color}; border-radius: 5px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
                 c_top1, c_top2, c_top3 = st.columns([2, 1, 1])
-                c_top1.caption(f"📍 {row['Lieu']}")
+                c_top1.caption(f"📍 {row['lieu']}")
                 
-                # --- MODIFICATION PRODUIT ---
                 with c_top2.popover("📝 Éditer"):
-                    with st.form(f"edit_prod_{orig_idx}"):
-                        new_n = st.text_input("Nom", value=row['Nom'])
-                        new_c = st.selectbox("Catégorie", liste_categories, index=liste_categories.index(row['Catégorie']) if row['Catégorie'] in liste_categories else 0)
-                        new_l = st.selectbox("Lieu", sorted(df_lieux["Nom"].tolist()), index=sorted(df_lieux["Nom"].tolist()).index(row['Lieu']) if row['Lieu'] in df_lieux["Nom"].values else 0)
-                        new_cont = st.selectbox("Contenant", sorted(df_cont["Nom"].tolist()), index=sorted(df_cont["Nom"].tolist()).index(row['Contenant']) if row['Contenant'] in df_cont["Nom"].values else 0)
-                        new_u = st.selectbox("Unité", UNITES, index=UNITES.index(row['Unité']) if row['Unité'] in UNITES else 0)
+                    with st.form(f"edit_prod_{row['id']}"):
+                        new_n = st.text_input("Nom", value=row['nom'])
+                        new_c = st.selectbox("Catégorie", liste_categories, index=liste_categories.index(row['categorie']) if row['categorie'] in liste_categories else 0)
+                        new_l = st.selectbox("Lieu", sorted(df_lieux["nom"].tolist()), index=sorted(df_lieux["nom"].tolist()).index(row['lieu']) if row['lieu'] in df_lieux["nom"].values else 0)
+                        new_cont = st.selectbox("Contenant", sorted(df_cont["nom"].tolist()), index=sorted(df_cont["nom"].tolist()).index(row['contenant']) if row['contenant'] in df_cont["nom"].values else 0)
+                        new_u = st.selectbox("Unité", UNITES, index=UNITES.index(row['unite']) if row['unite'] in UNITES else 0)
                         if st.form_submit_button("Enregistrer"):
-                            df.at[orig_idx, 'Nom'] = new_n
-                            df.at[orig_idx, 'Catégorie'] = new_c
-                            df.at[orig_idx, 'Lieu'] = new_l
-                            df.at[orig_idx, 'Contenant'] = new_cont
-                            df.at[orig_idx, 'Unité'] = new_u
-                            update_stock(df, f"Modif {new_n}")
+                            supabase.table("stock").update({
+                                "nom": new_n, "categorie": new_c, "lieu": new_l, "contenant": new_cont, "unite": new_u
+                            }).eq("id", row['id']).execute()
+                            st.rerun()
 
                 if is_new: c_top3.markdown("<p style='text-align:right; color:#2e7d32; font-size:0.8rem; font-weight:bold; margin:0;'>✨ NOUVEAU</p>", unsafe_allow_html=True)
                 
-                st.subheader(row['Nom'])
-                st.caption(f"🏷️ {row['Catégorie']} | 📦 {row['Contenant']}")
+                st.subheader(row['nom'])
+                st.caption(f"🏷️ {row['categorie']} | 📦 {row['contenant']}")
                 
                 col1, col2, col3, col4 = st.columns([1, 1.5, 1, 2])
-                if col1.button("➖", key=f"min_{orig_idx}"):
-                    if df.at[orig_idx, 'Nombre'] > 1:
-                        df.at[orig_idx, 'Nombre'] -= 1
-                        update_stock(df, "Moins")
+                if col1.button("➖", key=f"min_{row['id']}"):
+                    if row['nombre'] > 1:
+                        supabase.table("stock").update({"nombre": int(row['nombre']) - 1}).eq("id", row['id']).execute()
+                        st.rerun()
                 
-                unite_display = row['Unité'] if 'Unité' in row else ""
-                col2.markdown(f"<div class='qty-text'>{row['Nombre']} <small>{unite_display}</small></div>", unsafe_allow_html=True)
+                col2.markdown(f"<div class='qty-text'>{row['nombre']} <small>{row['unite']}</small></div>", unsafe_allow_html=True)
                 
-                if col3.button("➕", key=f"plus_{orig_idx}"):
-                    df.at[orig_idx, 'Nombre'] += 1
-                    update_stock(df, "Plus")
+                if col3.button("➕", key=f"plus_{row['id']}"):
+                    supabase.table("stock").update({"nombre": int(row['nombre']) + 1}).eq("id", row['id']).execute()
+                    st.rerun()
                 
-                if col4.button("🍽️ Fini", key=f"fin_{orig_idx}"):
-                    df = df.drop(orig_idx).reset_index(drop=True)
+                if col4.button("🍽️ Fini", key=f"fin_{row['id']}"):
+                    supabase.table("stock").delete().eq("id", row['id']).execute()
                     st.session_state.last_added_id = None
-                    update_stock(df, "Fini")
+                    st.rerun()
 
 # --- RÉCAPITULATIF ---
 with tab_recap:
     st.subheader("📋 Liste par lieu")
-    liste_lieux_recap = sorted(df_lieux["Nom"].tolist())
+    liste_lieux_recap = sorted(df_lieux["nom"].tolist()) if not df_lieux.empty else []
     if not liste_lieux_recap:
         st.warning("Veuillez créer un lieu dans l'onglet 'Lieux' d'abord.")
     else:
         lieu_recap = st.radio("Choisir le lieu :", liste_lieux_recap, horizontal=True, key="radio_recap")
         recap_df = df.copy()
         if not recap_df.empty:
-            recap_df = recap_df[recap_df['Lieu'] == lieu_recap]
-            # CORRECTION ICI : Suppression de dayfirst=True
-            recap_df['Date_dt'] = pd.to_datetime(recap_df['Date'], errors='coerce')
+            recap_df = recap_df[recap_df['lieu'] == lieu_recap]
+            recap_df['date_dt'] = pd.to_datetime(recap_df['date'], errors='coerce')
             
             if not recap_df.empty:
                 now = datetime.now()
-                nb_rouge = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 180)])
-                nb_orange = len(recap_df[pd.notna(recap_df['Date_dt']) & ((now - recap_df['Date_dt']).dt.days >= 90) & ((now - recap_df['Date_dt']).dt.days < 180)])
+                nb_rouge = len(recap_df[pd.notna(recap_df['date_dt']) & ((now - recap_df['date_dt']).dt.days >= 180)])
+                nb_orange = len(recap_df[pd.notna(recap_df['date_dt']) & ((now - recap_df['date_dt']).dt.days >= 90) & ((now - recap_df['date_dt']).dt.days < 180)])
                 if nb_rouge > 0 or nb_orange > 0:
                     msg = [f"🔴 **{nb_rouge}** de +6 mois" if nb_rouge > 0 else "", f"🟠 **{nb_orange}** de +3 mois" if nb_orange > 0 else ""]
                     st.markdown(f"<div class='stats-box'>⚠️ À consommer : {' / '.join(filter(None, msg))}</div>", unsafe_allow_html=True)
 
-            recap_df = recap_df.sort_values(by='Date_dt', ascending=True, na_position='last')
+            recap_df = recap_df.sort_values(by='date_dt', ascending=True, na_position='last')
             if recap_df.empty: st.info(f"Le lieu {lieu_recap} est vide.")
             else:
                 for _, row in recap_df.iterrows():
                     icon = "⚪"
-                    if pd.notna(row['Date_dt']):
-                        diff = (datetime.now() - row['Date_dt']).days
+                    if pd.notna(row['date_dt']):
+                        diff = (datetime.now() - row['date_dt']).days
                         icon = "🔴" if diff >= 180 else "🟠" if diff >= 90 else "⚪"
-                        date_display = f"({row['Date_dt'].strftime('%d/%m/%Y')})"
+                        date_display = f"({row['date_dt'].strftime('%d/%m/%Y')})"
                     else: date_display = "(Pas de date)"
-                    st.text(f"{icon} {row['Nom']} - {row['Nombre']} {row.get('Unité', '')} {date_display}")
+                    st.text(f"{icon} {row['nom']} - {row['nombre']} {row['unite']} {date_display}")
         else: st.info("Le stock est vide.")
 
 # --- ONGLET LIEUX ---
@@ -280,55 +208,47 @@ with tab_lieux:
     with st.form("conf_lieux", clear_on_submit=True):
         new_l = st.text_input("Ajouter un lieu")
         if st.form_submit_button("Valider"):
-            if new_l and new_l not in df_lieux["Nom"].values:
-                df_lieux = pd.concat([df_lieux, pd.DataFrame([{"Nom": new_l}])], ignore_index=True)
-                update_generic_file(df_lieux, FILE_LIEUX, "Nouveau lieu")
+            if new_l:
+                supabase.table("lieux").insert({"nom": new_l}).execute()
+                st.rerun()
 
-    for i, r in df_lieux.sort_values("Nom").iterrows():
+    for i, r in df_lieux.sort_values("nom").iterrows():
         c_n, c_e, c_d = st.columns([3, 1, 1])
-        c_n.write(f"• {r['Nom']}")
+        c_n.write(f"• {r['nom']}")
         with c_e.popover("✏️"):
-            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_loc_input_{i}")
+            new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_loc_input_{i}")
             if st.button("OK", key=f"btn_loc_{i}"):
-                old_name = r['Nom']
-                df_lieux.at[i, 'Nom'] = new_name
-                df_lieux.to_csv(FILE_LIEUX, index=False)
-                # Mise à jour du stock impacté
-                df.loc[df['Lieu'] == old_name, 'Lieu'] = new_name
-                df.to_csv(FILE_CSV, index=False)
-                save_to_github(FILE_CSV, f"Update lieu {old_name}->{new_name}")
-                update_generic_file(df_lieux, FILE_LIEUX, f"Rename lieu {old_name}")
+                old_name = r['nom']
+                supabase.table("lieux").update({"nom": new_name}).eq("nom", old_name).execute()
+                supabase.table("stock").update({"lieu": new_name}).eq("lieu", old_name).execute()
+                st.rerun()
         if c_d.button("🗑️", key=f"del_loc_{i}"):
-            df_lieux = df_lieux.drop(i).reset_index(drop=True)
-            update_generic_file(df_lieux, FILE_LIEUX, "Suppr lieu")
+            supabase.table("lieux").delete().eq("nom", r['nom']).execute()
+            st.rerun()
 
 # --- ONGLET CATÉGORIES ---
 with tab_cats:
     st.subheader("🏷️ Gestion des Catégories")
     with st.form("conf_cats", clear_on_submit=True):
-        new_cat = st.text_input("Ajouter une catégorie (ex: Viande, Dessert)")
+        new_cat = st.text_input("Ajouter une catégorie")
         if st.form_submit_button("Valider"):
-            if new_cat and new_cat not in df_cats["Nom"].values:
-                df_cats = pd.concat([df_cats, pd.DataFrame([{"Nom": new_cat}])], ignore_index=True)
-                update_generic_file(df_cats, FILE_CATS, "Nouvelle catégorie")
+            if new_cat:
+                supabase.table("categories").insert({"nom": new_cat}).execute()
+                st.rerun()
 
-    for i, r in df_cats.sort_values("Nom").iterrows():
+    for i, r in df_cats.sort_values("nom").iterrows():
         c_n, c_e, c_d = st.columns([3, 1, 1])
-        c_n.write(f"• {r['Nom']}")
+        c_n.write(f"• {r['nom']}")
         with c_e.popover("✏️"):
-            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_cat_input_{i}")
+            new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_cat_input_{i}")
             if st.button("OK", key=f"btn_cat_{i}"):
-                old_name = r['Nom']
-                df_cats.at[i, 'Nom'] = new_name
-                df_cats.to_csv(FILE_CATS, index=False)
-                # Mise à jour du stock impacté
-                df.loc[df['Catégorie'] == old_name, 'Catégorie'] = new_name
-                df.to_csv(FILE_CSV, index=False)
-                save_to_github(FILE_CSV, f"Update cat {old_name}->{new_name}")
-                update_generic_file(df_cats, FILE_CATS, f"Rename cat {old_name}")
+                old_name = r['nom']
+                supabase.table("categories").update({"nom": new_name}).eq("nom", old_name).execute()
+                supabase.table("stock").update({"categorie": new_name}).eq("categorie", old_name).execute()
+                st.rerun()
         if c_d.button("🗑️", key=f"del_cat_{i}"):
-            df_cats = df_cats.drop(i).reset_index(drop=True)
-            update_generic_file(df_cats, FILE_CATS, "Suppr catégorie")
+            supabase.table("categories").delete().eq("nom", r['nom']).execute()
+            st.rerun()
 
 # --- CONFIGURATION CONTENANTS ---
 with tab_cont:
@@ -336,24 +256,20 @@ with tab_cont:
     with st.form("conf_cont", clear_on_submit=True):
         new_c = st.text_input("Ajouter un contenant")
         if st.form_submit_button("Valider"):
-            if new_c and new_c not in df_cont["Nom"].values:
-                df_cont = pd.concat([df_cont, pd.DataFrame([{"Nom": new_c}])], ignore_index=True)
-                update_generic_file(df_cont, FILE_CONTENANTS, "Nouveau contenant")
+            if new_c:
+                supabase.table("contenants").insert({"nom": new_c}).execute()
+                st.rerun()
 
-    for i, r in df_cont.sort_values("Nom").iterrows():
+    for i, r in df_cont.sort_values("nom").iterrows():
         c_n, c_e, c_d = st.columns([3, 1, 1])
-        c_n.write(f"• {r['Nom']}")
+        c_n.write(f"• {r['nom']}")
         with c_e.popover("✏️"):
-            new_name = st.text_input("Renommer", value=r['Nom'], key=f"edit_cont_input_{i}")
+            new_name = st.text_input("Renommer", value=r['nom'], key=f"edit_cont_input_{i}")
             if st.button("OK", key=f"btn_cont_{i}"):
-                old_name = r['Nom']
-                df_cont.at[i, 'Nom'] = new_name
-                df_cont.to_csv(FILE_CONTENANTS, index=False)
-                # Mise à jour du stock impacté
-                df.loc[df['Contenant'] == old_name, 'Contenant'] = new_name
-                df.to_csv(FILE_CSV, index=False)
-                save_to_github(FILE_CSV, f"Update cont {old_name}->{new_name}")
-                update_generic_file(df_cont, FILE_CONTENANTS, f"Rename cont {old_name}")
+                old_name = r['nom']
+                supabase.table("contenants").update({"nom": new_name}).eq("nom", old_name).execute()
+                supabase.table("stock").update({"contenant": new_name}).eq("contenant", old_name).execute()
+                st.rerun()
         if c_d.button("🗑️", key=f"del_cont_{i}"):
-            df_cont = df_cont.drop(i).reset_index(drop=True)
-            update_generic_file(df_cont, FILE_CONTENANTS, "Suppr contenant")
+            supabase.table("contenants").delete().eq("nom", r['nom']).execute()
+            st.rerun()
