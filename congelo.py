@@ -63,8 +63,6 @@ def load_simple_table(table_name):
 
 # Chargement des données au démarrage
 df = load_stock()
-st.write("Colonnes détectées :", df.columns.tolist())
-st.write("Nombre de lignes :", len(df))
 df_cont = load_simple_table("contenants")
 df_lieux = load_simple_table("lieux")
 df_cats = load_simple_table("categories")
