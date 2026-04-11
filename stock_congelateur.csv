@@ -1,21 +1,22 @@
-Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
-Gigot d'agneau cuit,Plat cuisiné,2,Portions,Cuisine,2026-04-08 17:18:18,Sachet
-Chicon gratin,Plat cuisiné,1,Portions,Cuisine,2026-04-08 17:17:37,Moyen bleu
-Pain,Autre,4,Pièces,Cuisine,2026-04-04 14:14:34,Sac réutilisable orange
-Pain,Autre,6,Pièces,Cuisine,2026-04-04 14:14:18,Sac réutilisable rouge
-Pilon de poulet,Autre,1,Pièces,Cuisine,2026-03-28 10:47:03,Plastique blanc
-Viande hachée de boeuf,Autre,2,Portions,Cuisine,2026-03-28 10:46:45,Plastique blanc
-Conchiglie forestière ,Plat cuisiné,1,Portions,Buanderie,2026-03-27 10:54:45,Couvercle rouge
-Bowl semoule dinde curry,Plat cuisiné,1,Portions,Buanderie,2026-03-27 10:54:05,Petit bleu
-Saumon,Surgelé,2,Pièces,Buanderie,2026-03-27 10:52:43,Préemballage
-Chipotle sans semoule,Plat cuisiné,2,Portions,Buanderie,2026-03-21 09:46:32,Verre Carré
-Risotto cantal et lardons,Plat cuisiné,1,Portions,Cuisine,2026-03-11 11:43:44,Plastique blanc
-Nouilles sautées au poulet,Plat cuisiné,1,Portions,Buanderie,2026-03-08 12:08:18,Moyen bleu
-Baguette au seigle,Autre,2,Portions,Cuisine,2026-03-01 08:39:51,Sac réutilisable bleu
-Paupiettes avec pâtes,Plat cuisiné,2,Portions,Buanderie,2026-02-28 11:36:12,Pyrex
-Udon aux boulettes de porc,Plat cuisiné,1,Portions,Buanderie,2026-02-20 20:26:29,Couvercle cassé
-Stir fry boeuf riz,Plat cuisiné,2,Portions,Buanderie,2026-02-19 18:22:52,Pyrex
-Galettes chèvre lardon oignon,Surgelé,2,Portions,Cuisine,2026-02-03 17:15:05,Préemballage
-Bœuf carottes,Plat cuisiné,1,Portions,Cuisine,2026-02-03 17:13:55,Verre Carré
-Sauce boeuf carotte,Autre,1,Portions,Cuisine,2026-02-01 18:44:15,Plastique blanc
-Saumon fumé x5 tranches,Autre,2,Portions,Buanderie,2025-12-29 00:00:01,Pyrex
+Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
+Poulet teriyaki,Plat cuisiné,Couvercle rouge,Cuisine,1,Portions,2026-04-11 10:58:50
+Gigot d'agneau cuit,Plat cuisiné,Sachet,Cuisine,2,Portions,2026-04-08 17:18:18
+Chicon gratin,Plat cuisiné,Moyen bleu,Cuisine,1,Portions,2026-04-08 17:17:37
+Pain,Autre,Sac réutilisable orange,Cuisine,4,Pièces,2026-04-04 14:14:34
+Pain,Autre,Sac réutilisable rouge,Cuisine,6,Pièces,2026-04-04 14:14:18
+Pilon de poulet,Autre,Plastique blanc,Cuisine,1,Pièces,2026-03-28 10:47:03
+Viande hachée de boeuf,Autre,Plastique blanc,Cuisine,2,Portions,2026-03-28 10:46:45
+Conchiglie forestière ,Plat cuisiné,Couvercle rouge,Buanderie,1,Portions,2026-03-27 10:54:45
+Bowl semoule dinde curry,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-03-27 10:54:05
+Saumon,Surgelé,Préemballage,Buanderie,2,Pièces,2026-03-27 10:52:43
+Chipotle sans semoule,Plat cuisiné,Verre Carré,Buanderie,2,Portions,2026-03-21 09:46:32
+Risotto cantal et lardons,Plat cuisiné,Plastique blanc,Cuisine,1,Portions,2026-03-11 11:43:44
+Nouilles sautées au poulet,Plat cuisiné,Moyen bleu,Buanderie,1,Portions,2026-03-08 12:08:18
+Baguette au seigle,Autre,Sac réutilisable bleu,Cuisine,2,Portions,2026-03-01 08:39:51
+Paupiettes avec pâtes,Plat cuisiné,Pyrex,Buanderie,2,Portions,2026-02-28 11:36:12
+Udon aux boulettes de porc,Plat cuisiné,Couvercle cassé,Buanderie,1,Portions,2026-02-20 20:26:29
+Stir fry boeuf riz,Plat cuisiné,Pyrex,Buanderie,2,Portions,2026-02-19 18:22:52
+Galettes chèvre lardon oignon,Surgelé,Préemballage,Cuisine,2,Portions,2026-02-03 17:15:05
+Bœuf carottes,Plat cuisiné,Verre Carré,Cuisine,1,Portions,2026-02-03 17:13:55
+Sauce boeuf carotte,Autre,Plastique blanc,Cuisine,1,Portions,2026-02-01 18:44:15
+Saumon fumé x5 tranches,Autre,Pyrex,Buanderie,2,Portions,2025-12-29 00:00:01
