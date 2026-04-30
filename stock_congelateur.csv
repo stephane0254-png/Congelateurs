@@ -1,11 +1,12 @@
-Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
-Risotto cantal lardons,Plat cuisiné,1,Portions,Cuisine,2026-04-22 10:46:45,Plastique blanc
-Mijoté de porc à la mexicaine,Plat cuisiné,1,Portions,Buanderie,2026-04-12 17:44:50,Petit bleu
-Pain,Autre,8,Pièces,Cuisine,2026-04-11 11:00:21,Sac réutilisable vert
-Pain,Autre,6,Pièces,Cuisine,2026-04-04 14:14:18,Sac réutilisable rouge
-Pilon de poulet,Autre,1,Pièces,Cuisine,2026-03-28 10:47:03,Plastique blanc
-Conchiglie forestière ,Plat cuisiné,1,Portions,Buanderie,2026-03-27 10:54:45,Couvercle rouge
-Bowl semoule dinde curry,Plat cuisiné,1,Portions,Buanderie,2026-03-27 10:54:05,Petit bleu
-Saumon,Surgelé,2,Pièces,Buanderie,2026-03-27 10:52:43,Préemballage
-Nouilles sautées au poulet,Plat cuisiné,1,Portions,Buanderie,2026-03-08 12:08:18,Moyen bleu
-Sauce boeuf carotte,Autre,1,Portions,Cuisine,2026-02-01 18:44:15,Plastique blanc
+Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
+Pain aux graines,Autre,Sac réutilisable bleu,Buanderie,5,Portions,2026-04-30 16:47:09
+Risotto cantal lardons,Plat cuisiné,Plastique blanc,Cuisine,1,Portions,2026-04-22 10:46:45
+Mijoté de porc à la mexicaine,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-04-12 17:44:50
+Pain,Autre,Sac réutilisable vert,Cuisine,8,Pièces,2026-04-11 11:00:21
+Pain,Autre,Sac réutilisable rouge,Cuisine,6,Pièces,2026-04-04 14:14:18
+Pilon de poulet,Autre,Plastique blanc,Cuisine,1,Pièces,2026-03-28 10:47:03
+Conchiglie forestière ,Plat cuisiné,Couvercle rouge,Buanderie,1,Portions,2026-03-27 10:54:45
+Bowl semoule dinde curry,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-03-27 10:54:05
+Saumon,Surgelé,Préemballage,Buanderie,2,Pièces,2026-03-27 10:52:43
+Nouilles sautées au poulet,Plat cuisiné,Moyen bleu,Buanderie,1,Portions,2026-03-08 12:08:18
+Sauce boeuf carotte,Autre,Plastique blanc,Cuisine,1,Portions,2026-02-01 18:44:15
