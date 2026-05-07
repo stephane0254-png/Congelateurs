@@ -1,29 +1,30 @@
-Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
-Légumes pour potage,Surgelé,1,kg,Cuisine,2026-05-03 09:50:18,Préemballage
-Poêlée de pommes de terre grenailles,Surgelé,1,Pièces,Cuisine,2026-05-03 09:49:55,Préemballage
-Riz à la cantonaise,Surgelé,1,Pièces,Cuisine,2026-05-03 09:49:26,Préemballage
-Yakitori,Surgelé,1,Pièces,Cuisine,2026-05-03 09:49:09,Préemballage
-Beignets de crevette,Surgelé,1,Pièces,Cuisine,2026-05-03 09:48:52,Préemballage
-Brochettes de poulet thaï,Surgelé,1,Pièces,Cuisine,2026-05-03 09:48:29,Préemballage
-Bouchées de poulet au saté,Surgelé,1,Pièces,Cuisine,2026-05-03 09:48:11,Préemballage
-Nems au porc,Surgelé,1,Pièces,Cuisine,2026-05-03 09:47:51,Préemballage
-Frites,Surgelé,1,Portions,Cuisine,2026-05-03 09:47:28,Préemballage
-Frites,Surgelé,4,Portions,Cuisine,2026-05-03 09:47:06,Préemballage
-Nouilles aux légumes,Surgelé,3,Portions,Buanderie,2026-05-03 09:45:56,Préemballage
-Saumon pané,Surgelé,4,Portions,Buanderie,2026-05-03 09:45:38,Préemballage
-4 mini gratins de légumes,Surgelé,1,Pièces,Buanderie,2026-05-03 09:45:20,Préemballage
-Filets de limande façon meunière,Surgelé,4,Portions,Buanderie,2026-05-03 09:45:01,Préemballage
-Riz cuisiné à l’espagnole,Surgelé,3,Portions,Buanderie,2026-05-03 09:44:36,Préemballage
-Filets de maquereaux,Surgelé,2,Portions,Buanderie,2026-05-03 09:44:16,Préemballage
-Nems au poulet,Surgelé,1,Pièces,Buanderie,2026-05-03 09:43:58,Préemballage
-Foie gras de canard entier (300g),Surgelé,1,Pièces,Buanderie,2026-05-03 09:42:59,Préemballage
-Gratin de gnocchi au chorizo,Plat cuisiné,1,Portions,Buanderie,2026-05-01 17:49:53,Verre Carré
-Nouilles soba et poulet,Plat cuisiné,2,Portions,Buanderie,2026-05-01 11:28:10,Pyrex
-Pain aux graines,Autre,5,Portions,Cuisine,2026-04-30 16:47:09,Sac réutilisable bleu
-Risotto cantal lardons,Plat cuisiné,1,Portions,Cuisine,2026-04-22 10:46:45,Plastique blanc
-Mijoté de porc à la mexicaine,Plat cuisiné,1,Portions,Buanderie,2026-04-12 17:44:50,Petit bleu
-Pain,Autre,3,Pièces,Cuisine,2026-04-11 11:00:21,Sac réutilisable vert
-Pain,Autre,6,Pièces,Cuisine,2026-04-04 14:14:18,Sac réutilisable rouge
-Pilon de poulet,Autre,1,Pièces,Cuisine,2026-03-28 10:47:03,Plastique blanc
-Bowl semoule dinde curry,Plat cuisiné,1,Portions,Buanderie,2026-03-27 10:54:05,Petit bleu
-Sauce boeuf carotte,Autre,1,Portions,Cuisine,2026-02-01 18:44:15,Plastique blanc
+Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
+"Limande meunière, courgette, riz",Plat cuisiné,Verre Carré,Cuisine,1,Portions,2026-05-07 18:41:13
+Légumes pour potage,Surgelé,Préemballage,Cuisine,1,kg,2026-05-03 09:50:18
+Poêlée de pommes de terre grenailles,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:49:55
+Riz à la cantonaise,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:49:26
+Yakitori,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:49:09
+Beignets de crevette,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:48:52
+Brochettes de poulet thaï,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:48:29
+Bouchées de poulet au saté,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:48:11
+Nems au porc,Surgelé,Préemballage,Cuisine,1,Pièces,2026-05-03 09:47:51
+Frites,Surgelé,Préemballage,Cuisine,1,Portions,2026-05-03 09:47:28
+Frites,Surgelé,Préemballage,Cuisine,4,Portions,2026-05-03 09:47:06
+Nouilles aux légumes,Surgelé,Préemballage,Buanderie,3,Portions,2026-05-03 09:45:56
+Saumon pané,Surgelé,Préemballage,Buanderie,4,Portions,2026-05-03 09:45:38
+4 mini gratins de légumes,Surgelé,Préemballage,Buanderie,1,Pièces,2026-05-03 09:45:20
+Filets de limande façon meunière,Surgelé,Préemballage,Buanderie,4,Portions,2026-05-03 09:45:01
+Riz cuisiné à l’espagnole,Surgelé,Préemballage,Buanderie,3,Portions,2026-05-03 09:44:36
+Filets de maquereaux,Surgelé,Préemballage,Buanderie,2,Portions,2026-05-03 09:44:16
+Nems au poulet,Surgelé,Préemballage,Buanderie,1,Pièces,2026-05-03 09:43:58
+Foie gras de canard entier (300g),Surgelé,Préemballage,Buanderie,1,Pièces,2026-05-03 09:42:59
+Gratin de gnocchi au chorizo,Plat cuisiné,Verre Carré,Buanderie,1,Portions,2026-05-01 17:49:53
+Nouilles soba et poulet,Plat cuisiné,Pyrex,Buanderie,2,Portions,2026-05-01 11:28:10
+Pain aux graines,Autre,Sac réutilisable bleu,Cuisine,5,Portions,2026-04-30 16:47:09
+Risotto cantal lardons,Plat cuisiné,Plastique blanc,Cuisine,1,Portions,2026-04-22 10:46:45
+Mijoté de porc à la mexicaine,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-04-12 17:44:50
+Pain,Autre,Sac réutilisable vert,Cuisine,3,Pièces,2026-04-11 11:00:21
+Pain,Autre,Sac réutilisable rouge,Cuisine,6,Pièces,2026-04-04 14:14:18
+Pilon de poulet,Autre,Plastique blanc,Cuisine,1,Pièces,2026-03-28 10:47:03
+Bowl semoule dinde curry,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-03-27 10:54:05
+Sauce boeuf carotte,Autre,Plastique blanc,Cuisine,1,Portions,2026-02-01 18:44:15
