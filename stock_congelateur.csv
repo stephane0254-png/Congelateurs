@@ -1,15 +1,16 @@
-Nom,Catégorie,Nombre,Unité,Lieu,Date,Contenant
-Pomme de terre grenaille,Surgelé,2,Pièces,Cuisine,2026-05-19 16:18:47,Préemballage
-Pain de viande,Autre,2,Portions,Buanderie,2026-05-18 16:31:43,Plastique transparent
-Pâtes cuites,Autre,2,Portions,Cuisine,2026-05-14 16:19:47,Tupperware
-Penne au poulet doré et poireaux,Plat cuisiné,2,Pièces,Cuisine,2026-05-13 14:36:43,Moyen bleu
-Curry dinde petits pois,Plat cuisiné,1,Portions,Cuisine,2026-05-08 16:54:34,Couvercle rouge
-Linguines lardons asperges,Plat cuisiné,1,Portions,Buanderie,2026-05-07 18:42:20,Couvercle rouge
-"Limande meunière, courgette, riz",Plat cuisiné,1,Portions,Cuisine,2026-05-07 18:41:13,Verre Carré
-Légumes pour potage,Surgelé,1,kg,Cuisine,2026-05-03 09:50:18,Préemballage
-Nouilles aux légumes,Surgelé,3,Portions,Buanderie,2026-05-03 09:45:56,Préemballage
-Saumon pané,Surgelé,4,Portions,Buanderie,2026-05-03 09:45:38,Préemballage
-Riz cuisiné à l’espagnole,Surgelé,3,Portions,Buanderie,2026-05-03 09:44:36,Préemballage
-Foie gras de canard entier (300g),Surgelé,1,Pièces,Buanderie,2026-05-03 09:42:59,Préemballage
-Pain aux graines,Autre,5,Portions,Cuisine,2026-04-30 16:47:09,Sac réutilisable bleu
-Pain,Autre,6,Pièces,Cuisine,2026-04-04 14:14:18,Sac réutilisable rouge
+Nom,Catégorie,Contenant,Lieu,Nombre,Unité,Date
+Lieu et orzo,Plat cuisiné,Petit bleu,Buanderie,1,Portions,2026-05-24 06:13:07
+Pomme de terre grenaille,Surgelé,Préemballage,Cuisine,2,Pièces,2026-05-19 16:18:47
+Pain de viande,Autre,Plastique transparent,Buanderie,2,Portions,2026-05-18 16:31:43
+Pâtes cuites,Autre,Tupperware,Cuisine,2,Portions,2026-05-14 16:19:47
+Penne au poulet doré et poireaux,Plat cuisiné,Moyen bleu,Cuisine,2,Pièces,2026-05-13 14:36:43
+Curry dinde petits pois,Plat cuisiné,Couvercle rouge,Cuisine,1,Portions,2026-05-08 16:54:34
+Linguines lardons asperges,Plat cuisiné,Couvercle rouge,Buanderie,1,Portions,2026-05-07 18:42:20
+"Limande meunière, courgette, riz",Plat cuisiné,Verre Carré,Cuisine,1,Portions,2026-05-07 18:41:13
+Légumes pour potage,Surgelé,Préemballage,Cuisine,1,kg,2026-05-03 09:50:18
+Nouilles aux légumes,Surgelé,Préemballage,Buanderie,3,Portions,2026-05-03 09:45:56
+Saumon pané,Surgelé,Préemballage,Buanderie,4,Portions,2026-05-03 09:45:38
+Riz cuisiné à l’espagnole,Surgelé,Préemballage,Buanderie,3,Portions,2026-05-03 09:44:36
+Foie gras de canard entier (300g),Surgelé,Préemballage,Buanderie,1,Pièces,2026-05-03 09:42:59
+Pain aux graines,Autre,Sac réutilisable bleu,Cuisine,5,Portions,2026-04-30 16:47:09
+Pain,Autre,Sac réutilisable rouge,Cuisine,6,Pièces,2026-04-04 14:14:18
